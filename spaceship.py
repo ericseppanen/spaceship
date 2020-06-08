@@ -31,7 +31,7 @@ def load_image(name, colorkey=None):
 class Spaceship(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
-        self.image, self.rect = load_image("spaceship1.png", -1)
+        self.image, self.rect = load_image("red_ship.png", -1)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.rect.topleft = 230, 460
