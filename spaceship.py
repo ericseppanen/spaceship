@@ -27,9 +27,6 @@ def load_image(name, colorkey=None):
 
 
 class Spaceship(pygame.sprite.Sprite):
-    """moves a monkey critter across the screen. it can spin the
-       monkey when it is punched."""
-
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
         self.image, self.rect = load_image("spaceship1.png", -1)
@@ -40,14 +37,14 @@ class Spaceship(pygame.sprite.Sprite):
         self.dizzy = 0
 
     def update(self):
-        """walk or spin, depending on the monkeys state"""
+        """walk or spin, depending on the spaceship state"""
         if self.dizzy:
             self._spin()
         else:
             self._walk()
 
     def _walk(self):
-        """move the monkey across the screen, and turn at the ends"""
+        """move the spaceship, and turn at the ends"""
         newpos = self.rect.move((self.move_distance, 0))
         if not self.area.contains(newpos):
             self.move_distance = -self.move_distance
@@ -55,7 +52,7 @@ class Spaceship(pygame.sprite.Sprite):
         self.rect = newpos
 
     def _spin(self):
-        """spin the monkey image"""
+        """spin the image"""
         center = self.rect.center
         self.dizzy = self.dizzy + 12
         if self.dizzy >= 360:
@@ -67,7 +64,7 @@ class Spaceship(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=center)
 
     def punched(self):
-        """this will cause the monkey to start spinning"""
+        """this will cause the spaceship to start spinning"""
         if not self.dizzy:
             self.dizzy = 1
             self.original = self.image
