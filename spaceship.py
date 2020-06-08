@@ -23,7 +23,9 @@ def load_image(name, colorkey=None):
         if colorkey == -1:
             colorkey = image.get_at((0, 0))
         image.set_colorkey(colorkey, RLEACCEL)
-    return image, image.get_rect()
+
+    image_rect = image.get_rect()
+    return image, image_rect
 
 
 class Spaceship(pygame.sprite.Sprite):
@@ -32,9 +34,10 @@ class Spaceship(pygame.sprite.Sprite):
         self.image, self.rect = load_image("spaceship1.png", -1)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
-        self.rect.topleft = 10, 10
-        self.move_distance = 9
+        self.rect.topleft = 0, 0
+        self.move_distance = 0
         self.dizzy = 0
+
 
     def update(self):
         """walk or spin, depending on the spaceship state"""
@@ -45,12 +48,14 @@ class Spaceship(pygame.sprite.Sprite):
 
     def _walk(self):
         """move the spaceship, and turn at the ends"""
+        pass
+        '''
         newpos = self.rect.move((self.move_distance, 0))
         if not self.area.contains(newpos):
             self.move_distance = -self.move_distance
             newpos = self.rect.move((self.move_distance, 0))
         self.rect = newpos
-
+        '''
     def _spin(self):
         """spin the image"""
         center = self.rect.center
