@@ -34,7 +34,7 @@ class Spaceship(pygame.sprite.Sprite):
         self.image, self.rect = load_image("spaceship1.png", -1)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
-        self.rect.topleft = 0, 0
+        self.rect.topleft = 230, 460
         self.move_distance = 0
         self.dizzy = 0
 
@@ -46,6 +46,12 @@ class Spaceship(pygame.sprite.Sprite):
         else:
             self._walk()
 
+    def fly(self, vector):
+        """ vector is a 2-tuple like (0, 10) indicating direction """
+        newpos = self.rect.move(vector)
+        if self.area.contains(newpos):
+            self.rect = newpos
+
     def _walk(self):
         """move the spaceship, and turn at the ends"""
         pass
@@ -56,6 +62,7 @@ class Spaceship(pygame.sprite.Sprite):
             newpos = self.rect.move((self.move_distance, 0))
         self.rect = newpos
         '''
+
     def _spin(self):
         """spin the image"""
         center = self.rect.center
@@ -106,6 +113,9 @@ def main():
     spaceship = Spaceship()
     allsprites = pygame.sprite.RenderPlain((spaceship))
 
+    # Remember all the keys that are pressed.
+    active_keys = []
+
     # Main Loop
     going = True
     while going:
@@ -115,12 +125,27 @@ def main():
         for event in pygame.event.get():
             if event.type == QUIT:
                 going = False
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                going = False
+            elif event.type == KEYDOWN:
+                active_keys.append(event.key)
+                if event.key == K_ESCAPE:
+                    going = False
+            elif event.type == KEYUP:
+                active_keys.remove(event.key)
             elif event.type == MOUSEBUTTONDOWN:
                 pass
             elif event.type == MOUSEBUTTONUP:
                 pass
+
+        # Check the list of held keys to compute which way
+        # the spaceship should fly.
+        fly_direction = None
+        for key in active_keys:
+            if key == K_RIGHT:
+                fly_direction = (1, 0)
+            if key == K_LEFT:
+                fly_direction = (-1, 0)
+        if fly_direction is not None:
+            spaceship.fly(fly_direction)
 
         allsprites.update()
 
