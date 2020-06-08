@@ -79,19 +79,19 @@ def main():
        a loop until the function returns."""
     # Initialize Everything
     pygame.init()
-    screen = pygame.display.set_mode((468, 60))
+    screen = pygame.display.set_mode((500, 500))
     pygame.display.set_caption("Monkey Fever")
     pygame.mouse.set_visible(0)
 
     # Create The Backgound
     background = pygame.Surface(screen.get_size())
     background = background.convert()
-    background.fill((250, 250, 250))
+    background.fill((0, 0, 0))
 
     # Put Text On The Background, Centered
     if pygame.font:
         font = pygame.font.Font(None, 36)
-        text = font.render("Hello World", 1, (10, 10, 10))
+        text = font.render("Hello World", 1, (200, 200, 200))
         textpos = text.get_rect(centerx=background.get_width() / 2)
         background.blit(text, textpos)
 
