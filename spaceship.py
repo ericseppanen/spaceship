@@ -5,8 +5,6 @@ from pygame.compat import geterror
 
 if not pygame.font:
     print("Warning, fonts disabled")
-if not pygame.mixer:
-    print("Warning, sound disabled")
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, "data")
@@ -27,21 +25,6 @@ def load_image(name, colorkey=None):
         image.set_colorkey(colorkey, RLEACCEL)
     return image, image.get_rect()
 
-
-def load_sound(name):
-    class NoneSound:
-        def play(self):
-            pass
-
-    if not pygame.mixer or not pygame.mixer.get_init():
-        return NoneSound()
-    fullname = os.path.join(data_dir, name)
-    try:
-        sound = pygame.mixer.Sound(fullname)
-    except pygame.error:
-        print("Cannot load sound: %s" % fullname)
-        raise SystemExit(str(geterror()))
-    return sound
 
 class Spaceship(pygame.sprite.Sprite):
     """moves a monkey critter across the screen. it can spin the
@@ -118,8 +101,6 @@ def main():
 
     # Prepare Game Objects
     clock = pygame.time.Clock()
-    whiff_sound = load_sound("whiff.wav")
-    punch_sound = load_sound("punch.wav")
     spaceship = Spaceship()
     allsprites = pygame.sprite.RenderPlain((spaceship))
 
@@ -136,14 +117,8 @@ def main():
                 going = False
             elif event.type == MOUSEBUTTONDOWN:
                 pass
-                #if fist.punch(spaceship):
-                #    punch_sound.play()  # punch
-                #    spaceship.punched()
-                #else:
-                #    whiff_sound.play()  # miss
             elif event.type == MOUSEBUTTONUP:
                 pass
-                #fist.unpunch()
 
         allsprites.update()
 
