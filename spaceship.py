@@ -61,13 +61,6 @@ def main():
     background = background.convert()
     background.fill((0, 0, 0))
 
-    # Put Text On The Background, Centered
-    if pygame.font:
-        font = pygame.font.Font(None, 36)
-        text = font.render("Hello World", 1, (200, 200, 200))
-        textpos = text.get_rect(centerx=background.get_width() / 2)
-        background.blit(text, textpos)
-
     # Display The Background
     screen.blit(background, (0, 0))
     pygame.display.flip()
