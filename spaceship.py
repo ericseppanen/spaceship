@@ -45,6 +45,45 @@ class Spaceship(pygame.sprite.Sprite):
         if self.area.contains(newpos):
             self.rect = newpos
 
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
+        self.image, self.rect = load_image("green_ship.png", -1)
+        screen = pygame.display.get_surface()
+        self.area = screen.get_rect()
+        self.rect.topleft = 230, 10
+        self.direction = (2, 2)
+
+    def reverse_x(self):
+        x, y = self.direction
+        self.direction = (-x, y)
+
+    def reverse_y(self):
+        x, y = self.direction
+        self.direction = (x, -y)
+
+    def update(self):
+        # Move around randomly without input
+        pos = self.rect.move(self.direction)
+        if self.area.contains(pos):
+            self.rect = pos
+            return
+        # Fix the X position
+        if pos.right > self.area.right:
+            self.reverse_x()
+            pos.right = pos.right - 2 * (pos.right - self.area.right)
+        if pos.left < self.area.left:
+            self.reverse_x()
+            pos.left = pos.left - 2 * (pos.left - self.area.left)
+        # Fix the Y position
+        if pos.bottom > self.area.bottom:
+            self.reverse_y()
+            pos.bottom = pos.bottom - 2 * (pos.bottom - self.area.bottom)
+        if pos.top < self.area.top:
+            self.reverse_y()
+            pos.top = pos.top - 2 * (pos.top - self.area.top)
+        self.rect = pos
+
 
 def main():
     """this function is called when the program starts.
@@ -68,7 +107,8 @@ def main():
     # Prepare Game Objects
     clock = pygame.time.Clock()
     spaceship = Spaceship()
-    allsprites = pygame.sprite.RenderPlain((spaceship))
+    enemy = Enemy()
+    allsprites = pygame.sprite.RenderPlain((spaceship, enemy))
 
     # Remember all the keys that are pressed.
     active_keys = []
