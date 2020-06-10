@@ -32,6 +32,7 @@ class Spaceship(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
         self.image, self.rect = load_image("red_ship.png", -1)
+        self.mask = pygame.mask.from_surface(self.image)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.rect.topleft = 230, 460
@@ -49,6 +50,7 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
         self.image, self.rect = load_image("green_ship.png", -1)
+        self.mask = pygame.mask.from_surface(self.image)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.rect.topleft = 230, 10
@@ -145,6 +147,10 @@ def main():
             spaceship.fly(fly_direction)
 
         allsprites.update()
+        if pygame.sprite.collide_mask(spaceship, enemy):
+            print('COLLISION!')
+            going = False
+
 
         # Draw Everything
         screen.blit(background, (0, 0))
