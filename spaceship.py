@@ -9,33 +9,31 @@ if not pygame.font:
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, "data")
 
+def load_image(filename):
+    fullname = os.path.join(data_dir, filename)
+    image = pygame.image.load(fullname)
+    return image
 
-# functions to create our resources
-def load_image(name, colorkey=None):
-    fullname = os.path.join(data_dir, name)
-    try:
-        image = pygame.image.load(fullname)
-    except pygame.error:
-        print("Cannot load image:", fullname)
-        raise SystemExit(str(geterror()))
-    image = image.convert()
-    if colorkey is not None:
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey, RLEACCEL)
-
-    image_rect = image.get_rect()
-    return image, image_rect
-
-
-class Spaceship(pygame.sprite.Sprite):
+class ShipBase(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
-        self.image, self.rect = load_image("red_ship.png", -1)
+        super().__init__()
+
+    def set_image(self, image, center):
+        self.image = image
         self.mask = pygame.mask.from_surface(self.image)
+        self.rect = image.get_rect()
+        self.rect.center = center
+
+    def die(self, image):
+        center = self.rect.center
+        self.set_image(image, center)
+
+class Spaceship(ShipBase):
+    def __init__(self, image):
+        super().__init__()
+        self.set_image(image, (250, 475))
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
-        self.rect.topleft = 230, 460
 
     def update(self):
         pass
@@ -46,14 +44,12 @@ class Spaceship(pygame.sprite.Sprite):
         if self.area.contains(newpos):
             self.rect = newpos
 
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self):
-        pygame.sprite.Sprite.__init__(self)  # call Sprite intializer
-        self.image, self.rect = load_image("green_ship.png", -1)
-        self.mask = pygame.mask.from_surface(self.image)
+class Enemy(ShipBase):
+    def __init__(self, image):
+        super().__init__()
+        self.set_image(image, (250, 20))
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
-        self.rect.topleft = 230, 10
         self.direction = (2, 2)
 
     def reverse_x(self):
@@ -106,10 +102,15 @@ def main():
     screen.blit(background, (0, 0))
     pygame.display.flip()
 
+    # Load images
+    red_image = load_image("red_ship.png")
+    green_image = load_image("green_ship.png")
+    explosion = load_image("explosion.png")
+
     # Prepare Game Objects
     clock = pygame.time.Clock()
-    spaceship = Spaceship()
-    enemy = Enemy()
+    spaceship = Spaceship(red_image)
+    enemy = Enemy(green_image)
     allsprites = pygame.sprite.RenderPlain((spaceship, enemy))
 
     # Remember all the keys that are pressed.
@@ -117,6 +118,7 @@ def main():
 
     # Main Loop
     going = True
+    exit_time = None
     while going:
         clock.tick(60)
 
@@ -135,6 +137,13 @@ def main():
             elif event.type == MOUSEBUTTONUP:
                 pass
 
+        if exit_time:
+            current_time = pygame.time.get_ticks()
+            if current_time > exit_time:
+                going = False
+            # Don't do any more screen updates or ship movement
+            continue
+
         # Check the list of held keys to compute which way
         # the spaceship should fly.
         fly_direction = None
@@ -148,9 +157,9 @@ def main():
 
         allsprites.update()
         if pygame.sprite.collide_mask(spaceship, enemy):
-            print('COLLISION!')
-            going = False
-
+            spaceship.die(explosion)
+            enemy.die(explosion)
+            exit_time = pygame.time.get_ticks() + 1000 # milliseconds
 
         # Draw Everything
         screen.blit(background, (0, 0))
