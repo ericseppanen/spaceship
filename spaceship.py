@@ -35,51 +35,15 @@ class Spaceship(pygame.sprite.Sprite):
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.rect.topleft = 230, 460
-        self.move_distance = 0
-        self.dizzy = 0
-
 
     def update(self):
-        """walk or spin, depending on the spaceship state"""
-        if self.dizzy:
-            self._spin()
-        else:
-            self._walk()
+        pass
 
     def fly(self, vector):
         """ vector is a 2-tuple like (0, 10) indicating direction """
         newpos = self.rect.move(vector)
         if self.area.contains(newpos):
             self.rect = newpos
-
-    def _walk(self):
-        """move the spaceship, and turn at the ends"""
-        pass
-        '''
-        newpos = self.rect.move((self.move_distance, 0))
-        if not self.area.contains(newpos):
-            self.move_distance = -self.move_distance
-            newpos = self.rect.move((self.move_distance, 0))
-        self.rect = newpos
-        '''
-
-    def _spin(self):
-        """spin the image"""
-        center = self.rect.center
-        self.dizzy = self.dizzy + 12
-        if self.dizzy >= 360:
-            self.dizzy = 0
-            self.image = self.original
-        else:
-            rotate = pygame.transform.rotate
-            self.image = rotate(self.original, self.dizzy)
-        self.rect = self.image.get_rect(center=center)
-
-    def punched(self):
-        """this will cause the spaceship to start spinning"""
-        if not self.dizzy:
-            self.dizzy = 1
-            self.original = self.image
 
 
 def main():
@@ -89,7 +53,7 @@ def main():
     # Initialize Everything
     pygame.init()
     screen = pygame.display.set_mode((500, 500))
-    pygame.display.set_caption("Monkey Fever")
+    pygame.display.set_caption("Spaceship!")
     pygame.mouse.set_visible(0)
 
     # Create The Backgound
