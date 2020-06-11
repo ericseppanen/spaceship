@@ -1,10 +1,10 @@
+#!/usr/bin/python3
+
+import copy
 import os
 import pygame
 from pygame.locals import *
 from pygame.compat import geterror
-
-if not pygame.font:
-    print("Warning, fonts disabled")
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, "data")
@@ -14,9 +14,34 @@ def load_image(filename):
     image = pygame.image.load(fullname)
     return image
 
+class Animation:
+    def __init__(self, image_list, delay):
+        self.image_list = copy.copy(image_list)
+        self.delay = delay
+        self.countdown = 0
+
+    def __bool__(self):
+        """ Return True if the animation is ongoing """
+        return bool(self.image_list)
+
+    def next(self):
+        """ Return a new image if it's time, None otherwise """
+        self.countdown -= 1
+        if self.countdown > 0:
+            return None
+        # Time for a new image, maybe?
+        try:
+            image = self.image_list.pop(0)
+            self.countdown = self.delay
+            return image
+        except IndexError:
+            return None
+
 class SpriteBase(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
+        self.animation = None
+        self.dying = False
 
     def set_image(self, image, center):
         self.image = image
@@ -24,9 +49,20 @@ class SpriteBase(pygame.sprite.Sprite):
         self.rect = image.get_rect()
         self.rect.center = center
 
-    def die(self, image):
-        center = self.rect.center
-        self.set_image(image, center)
+    def update(self):
+        if self.animation:
+            image = self.animation.next()
+            if image:
+                center = self.rect.center
+                self.set_image(image, center)
+        else:
+            if self.dying:
+                # We are dying and have already finished our animation.
+                self.kill()
+
+    def die(self, animation):
+        self.dying = True
+        self.animation = animation
 
 class Projectile(SpriteBase):
     def __init__(self, image, location, direction):
@@ -55,7 +91,7 @@ class Spaceship(SpriteBase):
         self.area = screen.get_rect()
 
     def update(self):
-        pass
+        super().update()
 
     def fly(self, vector):
         """ vector is a 2-tuple like (0, 10) indicating direction """
@@ -80,6 +116,11 @@ class Enemy(SpriteBase):
         self.direction = (x, -y)
 
     def update(self):
+        super().update()
+
+        if self.dying:
+            return
+
         # Move around randomly without input
         pos = self.rect.move(self.direction)
         if self.area.contains(pos):
@@ -124,7 +165,14 @@ def main():
     # Load images
     red_image = load_image("red_ship.png")
     green_image = load_image("green_ship.png")
-    explosion = load_image("explosion.png")
+    explosions = [
+        load_image("explosion1.png"),
+        load_image("explosion2.png"),
+        load_image("explosion3.png"),
+        load_image("explosion4.png"),
+        load_image("explosion5.png"),
+        load_image("explosion6.png"),
+    ]
 
     # Prepare Game Objects
     clock = pygame.time.Clock()
@@ -160,24 +208,24 @@ def main():
             current_time = pygame.time.get_ticks()
             if current_time > exit_time:
                 going = False
-            # Don't do any more screen updates or ship movement
-            continue
-
-        # Check the list of held keys to compute which way
-        # the spaceship should fly.
-        fly_direction = None
-        for key in active_keys:
-            if key == K_RIGHT:
-                fly_direction = (1, 0)
-            if key == K_LEFT:
-                fly_direction = (-1, 0)
-        if fly_direction is not None:
-            spaceship.fly(fly_direction)
+        else:
+            # Check the list of held keys to compute which way
+            # the spaceship should fly.
+            fly_direction = None
+            for key in active_keys:
+                if key == K_RIGHT:
+                    fly_direction = (1, 0)
+                if key == K_LEFT:
+                    fly_direction = (-1, 0)
+            if fly_direction is not None:
+                spaceship.fly(fly_direction)
 
         allsprites.update()
         if pygame.sprite.collide_mask(spaceship, enemy):
-            spaceship.die(explosion)
-            enemy.die(explosion)
+            if not spaceship.dying:
+                spaceship.die(Animation(explosions, 10))
+            if not enemy.dying:
+                enemy.die(Animation(explosions, 10))
             exit_time = pygame.time.get_ticks() + 1000 # milliseconds
 
         # Draw Everything
