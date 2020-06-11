@@ -14,7 +14,7 @@ def load_image(filename):
     image = pygame.image.load(fullname)
     return image
 
-class ShipBase(pygame.sprite.Sprite):
+class SpriteBase(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
 
@@ -28,7 +28,26 @@ class ShipBase(pygame.sprite.Sprite):
         center = self.rect.center
         self.set_image(image, center)
 
-class Spaceship(ShipBase):
+class Projectile(SpriteBase):
+    def __init__(self, image, location, direction):
+        super().__init__()
+        self.set_image(image, location)
+        screen = pygame.display.get_surface()
+        self.area = screen.get_rect()
+        self.direction = direction
+        self.active = True
+
+    def update(self):
+        if self.active:
+            newpos = self.rect.move(self.direction)
+            if not self.area.contains(newpos):
+                self.deactivate()
+
+    def deactivate(self):
+        self.active = False
+        self.rect = None
+
+class Spaceship(SpriteBase):
     def __init__(self, image):
         super().__init__()
         self.set_image(image, (250, 475))
@@ -44,7 +63,7 @@ class Spaceship(ShipBase):
         if self.area.contains(newpos):
             self.rect = newpos
 
-class Enemy(ShipBase):
+class Enemy(SpriteBase):
     def __init__(self, image):
         super().__init__()
         self.set_image(image, (250, 20))
