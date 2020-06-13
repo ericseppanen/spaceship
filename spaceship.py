@@ -5,6 +5,7 @@ import os
 import pygame
 from pygame.locals import *
 from pygame.compat import geterror
+from random import randint, getrandbits
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 data_dir = os.path.join(main_dir, "data")
@@ -76,8 +77,10 @@ class Projectile(SpriteBase):
     def update(self):
         if self.active:
             newpos = self.rect.move(self.direction)
-            if not self.area.contains(newpos):
-                self.deactivate()
+            if self.area.contains(newpos):
+                self.rect = newpos
+            else:
+                self.kill()
 
     def deactivate(self):
         self.active = False
@@ -100,12 +103,12 @@ class Spaceship(SpriteBase):
             self.rect = newpos
 
 class Enemy(SpriteBase):
-    def __init__(self, image):
+    def __init__(self, image, location, direction):
         super().__init__()
-        self.set_image(image, (250, 20))
+        self.set_image(image, location)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
-        self.direction = (2, 2)
+        self.direction = direction
 
     def reverse_x(self):
         x, y = self.direction
@@ -143,100 +146,153 @@ class Enemy(SpriteBase):
         self.rect = pos
 
 
-def main():
-    """this function is called when the program starts.
-       it initializes everything it needs, then runs in
-       a loop until the function returns."""
-    # Initialize Everything
-    pygame.init()
-    screen = pygame.display.set_mode((500, 500))
-    pygame.display.set_caption("Spaceship!")
-    pygame.mouse.set_visible(0)
+# images are globals
+red_image = load_image("red_ship.png")
+green_image = load_image("green_ship.png")
+green_image = pygame.transform.flip(green_image, True, True)
+torpedo_image = load_image("torpedo.png")
+explosions = [
+    load_image("explosion1.png"),
+    load_image("explosion2.png"),
+    load_image("explosion3.png"),
+    load_image("explosion4.png"),
+    load_image("explosion5.png"),
+    load_image("explosion6.png"),
+]
 
-    # Create The Backgound
-    background = pygame.Surface(screen.get_size())
-    background = background.convert()
-    background.fill((0, 0, 0))
+class SpaceshipGame:
+    def __init__(self):
+        pygame.init()
+        self.screen = pygame.display.set_mode((500, 500))
+        pygame.display.set_caption("Spaceship!")
+        pygame.mouse.set_visible(0)
 
-    # Display The Background
-    screen.blit(background, (0, 0))
-    pygame.display.flip()
+        # Create The Backgound
+        bg = pygame.Surface(self.screen.get_size())
+        self.background = bg.convert()
+        self.background.fill((0, 0, 0))
 
-    # Load images
-    red_image = load_image("red_ship.png")
-    green_image = load_image("green_ship.png")
-    explosions = [
-        load_image("explosion1.png"),
-        load_image("explosion2.png"),
-        load_image("explosion3.png"),
-        load_image("explosion4.png"),
-        load_image("explosion5.png"),
-        load_image("explosion6.png"),
-    ]
+        # Display The Background
+        self.screen.blit(self.background, (0, 0))
+        pygame.display.flip()
 
-    # Prepare Game Objects
-    clock = pygame.time.Clock()
-    spaceship = Spaceship(red_image)
-    enemy = Enemy(green_image)
-    allsprites = pygame.sprite.RenderPlain((spaceship, enemy))
+        # Prepare Game Objects
+        self.exit_time = None
+        self.clock = pygame.time.Clock()
+        self.current_time = 0
+        self.spaceship = Spaceship(red_image)
+        self.players = pygame.sprite.GroupSingle(self.spaceship)
+        self.enemies = pygame.sprite.RenderPlain()
+        self.projectiles = pygame.sprite.RenderPlain()
 
-    # Remember all the keys that are pressed.
-    active_keys = []
+        # Remember all the keys that are pressed.
+        self.active_keys = []
 
-    # Main Loop
-    going = True
-    exit_time = None
-    while going:
-        clock.tick(60)
+        # Keep score
+        self.score = 0
 
-        # Handle Input Events
+        # Set the time for the first spawned enemy
+        self.enemy_spawn_time = 3000
+        self.max_enemies = 10
+
+    def handle_events(self):
         for event in pygame.event.get():
             if event.type == QUIT:
-                going = False
+                self.exit_time = 0
             elif event.type == KEYDOWN:
-                active_keys.append(event.key)
+                self.active_keys.append(event.key)
                 if event.key == K_ESCAPE:
-                    going = False
+                    self.exit_time = 0
+                if event.key == K_SPACE:
+                    torp_pos = self.spaceship.rect.midtop
+                    torp_dir = (0, -5)
+                    torpedo = Projectile(torpedo_image, torp_pos, torp_dir)
+                    self.projectiles.add(torpedo)
+
             elif event.type == KEYUP:
-                active_keys.remove(event.key)
+                self.active_keys.remove(event.key)
             elif event.type == MOUSEBUTTONDOWN:
                 pass
             elif event.type == MOUSEBUTTONUP:
                 pass
 
-        if exit_time:
-            current_time = pygame.time.get_ticks()
-            if current_time > exit_time:
-                going = False
-        else:
-            # Check the list of held keys to compute which way
-            # the spaceship should fly.
-            fly_direction = None
-            for key in active_keys:
-                if key == K_RIGHT:
-                    fly_direction = (1, 0)
-                if key == K_LEFT:
-                    fly_direction = (-1, 0)
-            if fly_direction is not None:
-                spaceship.fly(fly_direction)
+    def player_move(self):
+        # Check the list of held keys to compute which way
+        # the spaceship should fly.
+        fly_direction = None
+        for key in self.active_keys:
+            if key == K_RIGHT:
+                fly_direction = (1, 0)
+            if key == K_LEFT:
+                fly_direction = (-1, 0)
+        if fly_direction is not None:
+            self.spaceship.fly(fly_direction)
 
-        allsprites.update()
-        if pygame.sprite.collide_mask(spaceship, enemy):
-            if not spaceship.dying:
-                spaceship.die(Animation(explosions, 10))
-            if not enemy.dying:
-                enemy.die(Animation(explosions, 10))
-            exit_time = pygame.time.get_ticks() + 1000 # milliseconds
+    def spawn_enemies(self):
+        if self.current_time > self.enemy_spawn_time:
+            if len(self.enemies.sprites()) < self.max_enemies:
+                location = (randint(40, 460), 20)
+                x_direction = -2 + 4 * getrandbits(1)
+                direction = (x_direction, 2)
+                new_enemy = Enemy(green_image, location, direction)
+                self.enemies.add(new_enemy)
+                self.enemy_spawn_time += max(1000, 5000 - self.score * 5)
 
-        # Draw Everything
-        screen.blit(background, (0, 0))
-        allsprites.draw(screen)
+    def sprite_updates(self):
+        self.players.update()
+        self.enemies.update()
+        self.projectiles.update()
+        collide_dict = pygame.sprite.groupcollide(
+                self.enemies,
+                self.projectiles,
+                False,
+                True,
+                pygame.sprite.collide_mask)
+        for hit_enemy in collide_dict:
+            if not hit_enemy.dying:
+                self.score += 100
+                print('Enemy destroyed! Score={}'.format(self.score))
+                hit_enemy.die(Animation(explosions, 10))
+        collide_dict = pygame.sprite.groupcollide(
+                self.players,
+                self.enemies,
+                False,
+                False,
+                pygame.sprite.collide_mask)
+        for hit_player, hit_enemies in collide_dict.items():
+            if not hit_player.dying:
+                hit_player.die(Animation(explosions, 10))
+            for hit_enemy in hit_enemies:
+                if not hit_enemy.dying:
+                    hit_enemy.die(Animation(explosions, 10))
+            self.exit_time = pygame.time.get_ticks() + 1000 # milliseconds
+
+    def draw(self):
+        self.screen.blit(self.background, (0, 0))
+        self.players.draw(self.screen)
+        self.enemies.draw(self.screen)
+        self.projectiles.draw(self.screen)
         pygame.display.flip()
 
-    pygame.quit()
+    def run(self):
+        while True:
+            self.clock.tick(60)
+            self.current_time = pygame.time.get_ticks()
+            if self.exit_time is not None:
+                if self.current_time > self.exit_time:
+                    break
+            self.handle_events()
+            self.spawn_enemies()
+            self.player_move()
+            self.sprite_updates()
+            self.draw()
+
+        # When we exit the loop the game is over.
+        pygame.quit()
 
 
-# Game Over
+def main():
+    SpaceshipGame().run()
 
 
 # this calls the 'main' function when this script is executed
