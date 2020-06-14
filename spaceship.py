@@ -4,7 +4,6 @@ import copy
 import os
 import pygame
 from pygame.locals import *
-from pygame.compat import geterror
 from random import randint, getrandbits
 
 main_dir = os.path.split(os.path.abspath(__file__))[0]
@@ -175,6 +174,7 @@ class SpaceshipGame:
         # Display The Background
         self.screen.blit(self.background, (0, 0))
         pygame.display.flip()
+        self.init_fonts()
 
         # Prepare Game Objects
         self.exit_time = None
@@ -190,10 +190,23 @@ class SpaceshipGame:
 
         # Keep score
         self.score = 0
+        self.redraw_score()
 
         # Set the time for the first spawned enemy
         self.enemy_spawn_time = 3000
         self.max_enemies = 10
+
+    def init_fonts(self):
+        font_path = os.path.join(data_dir, 'font', 'monoMMM_5.ttf')
+        self.score_font = pygame.font.Font(font_path, 18)
+
+    def redraw_score(self):
+        score_str = '{:05}'.format(self.score)
+        color = (200, 200, 200)
+        text = self.score_font.render(score_str, False, color)
+        textpos = text.get_rect(centerx=self.background.get_width() / 2)
+        self.background.fill((0, 0, 0))
+        self.background.blit(text, textpos)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -251,7 +264,7 @@ class SpaceshipGame:
         for hit_enemy in collide_dict:
             if not hit_enemy.dying:
                 self.score += 100
-                print('Enemy destroyed! Score={}'.format(self.score))
+                self.redraw_score()
                 hit_enemy.die(Animation(explosions, 10))
         collide_dict = pygame.sprite.groupcollide(
                 self.players,
