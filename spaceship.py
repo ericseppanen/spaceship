@@ -15,7 +15,11 @@ def load_image(filename):
     return image
 
 class Animation:
+    """ A helper class that cycles through a list of images """
+
     def __init__(self, image_list, delay):
+        """ set up the list of images and the delay between each """
+
         self.image_list = copy.copy(image_list)
         self.delay = delay
         self.countdown = 0
@@ -38,8 +42,11 @@ class Animation:
             return None
 
 class SpriteBase(pygame.sprite.Sprite):
+    """ A base class for our sprites, including commonly used functions """
     def __init__(self):
         super().__init__()
+        screen = pygame.display.get_surface()
+        self.area = screen.get_rect()
         self.animation = None
         self.dying = False
 
@@ -65,35 +72,24 @@ class SpriteBase(pygame.sprite.Sprite):
         self.animation = animation
 
 class Projectile(SpriteBase):
+    """ A projectile sprite, that just moves in a constant direction """
     def __init__(self, image, location, direction):
         super().__init__()
         self.set_image(image, location)
-        screen = pygame.display.get_surface()
-        self.area = screen.get_rect()
         self.direction = direction
-        self.active = True
 
     def update(self):
-        if self.active:
-            newpos = self.rect.move(self.direction)
-            if self.area.contains(newpos):
-                self.rect = newpos
-            else:
-                self.kill()
-
-    def deactivate(self):
-        self.active = False
-        self.rect = None
+        newpos = self.rect.move(self.direction)
+        if self.area.contains(newpos):
+            self.rect = newpos
+        else:
+            self.kill()
 
 class Spaceship(SpriteBase):
+    """ The player's ship """
     def __init__(self, image):
         super().__init__()
         self.set_image(image, (250, 475))
-        screen = pygame.display.get_surface()
-        self.area = screen.get_rect()
-
-    def update(self):
-        super().update()
 
     def fly(self, vector):
         """ vector is a 2-tuple like (0, 10) indicating direction """
@@ -105,8 +101,6 @@ class Enemy(SpriteBase):
     def __init__(self, image, location, direction):
         super().__init__()
         self.set_image(image, location)
-        screen = pygame.display.get_surface()
-        self.area = screen.get_rect()
         self.direction = direction
 
     def reverse_x(self):
