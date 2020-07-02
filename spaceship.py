@@ -153,6 +153,24 @@ explosions = [
     load_image("explosion6.png"),
 ]
 
+GAME_LEVELS = {
+    # level 1
+    1: {
+        'enemy_count': 5,
+        'spawn_rate': 10,
+    },
+    # level 2
+    2: {
+        'enemy_count': 10,
+        'spawn_rate': 20,
+    },
+    # level 3
+    3: {
+        'enemy_count': 15,
+        'spawn_rate': 30,
+    },
+}
+
 class SpaceshipGame:
     def __init__(self):
         pygame.init()
@@ -182,25 +200,38 @@ class SpaceshipGame:
         # Remember all the keys that are pressed.
         self.active_keys = []
 
+        # Set up the game level and phase
+        self.level_num = 0
+        self.game_phase = 'starting'
+
         # Keep score
         self.score = 0
-        self.redraw_score()
-
-        # Set the time for the first spawned enemy
-        self.enemy_spawn_time = 3000
-        self.max_enemies = 10
+        self.redraw_background()
 
     def init_fonts(self):
         font_path = os.path.join(data_dir, 'font', 'monoMMM_5.ttf')
         self.score_font = pygame.font.Font(font_path, 18)
 
-    def redraw_score(self):
+    def redraw_background(self):
         score_str = '{:05}'.format(self.score)
         color = (200, 200, 200)
         text = self.score_font.render(score_str, False, color)
         textpos = text.get_rect(centerx=self.background.get_width() / 2)
         self.background.fill((0, 0, 0))
         self.background.blit(text, textpos)
+        if self.game_phase == 'getready':
+            level_str = 'LEVEL {}'.format(self.level_num)
+            center_text = self.score_font.render(level_str, False, color)
+            center_text_pos = center_text.get_rect(center=self.background.get_rect().center)
+            self.background.blit(center_text, center_text_pos)
+
+    def player_shoot(self):
+        if self.game_phase != 'playing':
+            return
+        torp_pos = self.spaceship.rect.midtop
+        torp_dir = (0, -5)
+        torpedo = Projectile(torpedo_image, torp_pos, torp_dir)
+        self.projectiles.add(torpedo)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -211,10 +242,7 @@ class SpaceshipGame:
                 if event.key == K_ESCAPE:
                     self.exit_time = 0
                 if event.key == K_SPACE:
-                    torp_pos = self.spaceship.rect.midtop
-                    torp_dir = (0, -5)
-                    torpedo = Projectile(torpedo_image, torp_pos, torp_dir)
-                    self.projectiles.add(torpedo)
+                    self.player_shoot()
 
             elif event.type == KEYUP:
                 self.active_keys.remove(event.key)
@@ -236,14 +264,16 @@ class SpaceshipGame:
             self.spaceship.fly(fly_direction)
 
     def spawn_enemies(self):
+        if self.level_enemies == 0:
+            return
         if self.current_time > self.enemy_spawn_time:
-            if len(self.enemies.sprites()) < self.max_enemies:
-                location = (randint(40, 460), 20)
-                x_direction = -2 + 4 * getrandbits(1)
-                direction = (x_direction, 2)
-                new_enemy = Enemy(green_image, location, direction)
-                self.enemies.add(new_enemy)
-                self.enemy_spawn_time += max(1000, 5000 - self.score * 5)
+            self.level_enemies -= 1
+            location = (randint(40, 460), 20)
+            x_direction = -2 + 4 * getrandbits(1)
+            direction = (x_direction, 2)
+            new_enemy = Enemy(green_image, location, direction)
+            self.enemies.add(new_enemy)
+            self.enemy_spawn_time += self.spawn_delay
 
     def sprite_updates(self):
         self.players.update()
@@ -258,7 +288,7 @@ class SpaceshipGame:
         for hit_enemy in collide_dict:
             if not hit_enemy.dying:
                 self.score += 100
-                self.redraw_score()
+                self.redraw_background()
                 hit_enemy.die(Animation(explosions, 10))
         collide_dict = pygame.sprite.groupcollide(
                 self.players,
@@ -281,6 +311,31 @@ class SpaceshipGame:
         self.projectiles.draw(self.screen)
         pygame.display.flip()
 
+    def init_level(self):
+        self.level_num += 1
+        self.level = GAME_LEVELS[self.level_num]
+        self.level_enemies = self.level['enemy_count']
+        self.spawn_delay = 20000 // self.level['spawn_rate']
+
+    def phase_check(self):
+        # This will trigger the 'getready' phase
+        if self.game_phase == 'starting':
+            self.next_phase_time = 0
+
+        if self.next_phase_time is None:
+            return
+        if self.current_time < self.next_phase_time:
+            return
+        self.next_phase_time = None
+        if self.game_phase == 'getready':
+            self.game_phase = 'playing'
+            self.enemy_spawn_time = self.current_time + 2000
+        else:
+            self.init_level()
+            self.game_phase = 'getready'
+            self.next_phase_time = self.current_time + 2000
+        self.redraw_background()
+
     def run(self):
         while True:
             self.clock.tick(60)
@@ -288,8 +343,13 @@ class SpaceshipGame:
             if self.exit_time is not None:
                 if self.current_time > self.exit_time:
                     break
+            self.phase_check()
             self.handle_events()
-            self.spawn_enemies()
+            if self.game_phase == 'playing':
+                self.spawn_enemies()
+                # sprites() returns a list, so we're checking if the list is empty
+                if self.level_enemies == 0 and self.enemies.sprites():
+                    self.next_phase_time = self.current_time + 1000
             self.player_move()
             self.sprite_updates()
             self.draw()
