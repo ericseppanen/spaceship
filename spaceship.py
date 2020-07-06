@@ -143,6 +143,9 @@ class Enemy(SpriteBase):
 red_image = load_image("red_ship.png")
 green_image = load_image("green_ship.png")
 green_image = pygame.transform.flip(green_image, True, True)
+blue_image = load_image("blue_ship.png")
+blue_image = pygame.transform.flip(blue_image, True, True)
+
 torpedo_image = load_image("torpedo.png")
 explosions = [
     load_image("explosion1.png"),
@@ -158,16 +161,19 @@ GAME_LEVELS = {
     1: {
         'enemy_count': 5,
         'spawn_rate': 10,
+        'fighter_count': 1,
     },
     # level 2
     2: {
         'enemy_count': 10,
         'spawn_rate': 20,
+        'fighter_count': 2,
     },
     # level 3
     3: {
         'enemy_count': 15,
         'spawn_rate': 30,
+        'fighter_count': 3,
     },
 }
 
@@ -275,6 +281,26 @@ class SpaceshipGame:
             self.enemies.add(new_enemy)
             self.enemy_spawn_time += self.spawn_delay
 
+    def spawn_fighters(self):
+        if self.level_fighters == 0:
+            return
+
+        total = self.level['fighter_count']
+        # This is a fraction that tells us when to spawn a fighter
+        fighter_threshold = 1.0 - self.level_fighters / (total + 1)
+
+        # This is a fraction of how many enemies we killed
+        killed_frac = self.enemies_killed / self.level['enemy_count']
+
+        if killed_frac > fighter_threshold:
+            # We should spawn a new fighter now.
+            self.level_fighters -= 1
+            location = (randint(40, 460), 20)
+            x_direction = -3 + 6 * getrandbits(1)
+            direction = (x_direction, 0)
+            new_enemy = Enemy(blue_image, location, direction)
+            self.enemies.add(new_enemy)
+
     def sprite_updates(self):
         self.players.update()
         self.enemies.update()
@@ -290,6 +316,8 @@ class SpaceshipGame:
                 self.score += 100
                 self.redraw_background()
                 hit_enemy.die(Animation(explosions, 10))
+                self.enemies_killed += 1
+                self.spawn_fighters()
         collide_dict = pygame.sprite.groupcollide(
                 self.players,
                 self.enemies,
@@ -312,9 +340,11 @@ class SpaceshipGame:
         pygame.display.flip()
 
     def init_level(self):
+        self.enemies_killed = 0
         self.level_num += 1
         self.level = GAME_LEVELS[self.level_num]
         self.level_enemies = self.level['enemy_count']
+        self.level_fighters = self.level['fighter_count']
         self.spawn_delay = 20000 // self.level['spawn_rate']
 
     def phase_check(self):
