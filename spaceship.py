@@ -98,10 +98,11 @@ class Spaceship(SpriteBase):
             self.rect = newpos
 
 class Enemy(SpriteBase):
-    def __init__(self, image, location, direction):
+    def __init__(self, image, location, direction, points):
         super().__init__()
         self.set_image(image, location)
         self.direction = direction
+        self.points = points
 
     def reverse_x(self):
         x, y = self.direction
@@ -155,6 +156,9 @@ explosions = [
     load_image("explosion5.png"),
     load_image("explosion6.png"),
 ]
+
+REGULAR_ENEMY_POINTS = 100
+FIGHTER_ENEMY_POINTS = 300
 
 GAME_LEVELS = {
     # level 1
@@ -277,7 +281,7 @@ class SpaceshipGame:
             location = (randint(40, 460), 20)
             x_direction = -2 + 4 * getrandbits(1)
             direction = (x_direction, 2)
-            new_enemy = Enemy(green_image, location, direction)
+            new_enemy = Enemy(green_image, location, direction, REGULAR_ENEMY_POINTS)
             self.enemies.add(new_enemy)
             self.enemy_spawn_time += self.spawn_delay
 
@@ -298,7 +302,7 @@ class SpaceshipGame:
             location = (randint(40, 460), 20)
             x_direction = -3 + 6 * getrandbits(1)
             direction = (x_direction, 0)
-            new_enemy = Enemy(blue_image, location, direction)
+            new_enemy = Enemy(blue_image, location, direction, FIGHTER_ENEMY_POINTS)
             self.enemies.add(new_enemy)
 
     def sprite_updates(self):
@@ -313,7 +317,7 @@ class SpaceshipGame:
                 pygame.sprite.collide_mask)
         for hit_enemy in collide_dict:
             if not hit_enemy.dying:
-                self.score += 100
+                self.score += hit_enemy.points
                 self.redraw_background()
                 hit_enemy.die(Animation(explosions, 10))
                 self.enemies_killed += 1
