@@ -98,11 +98,14 @@ class Spaceship(SpriteBase):
             self.rect = newpos
 
 class Enemy(SpriteBase):
-    def __init__(self, image, location, direction, points):
+    def __init__(self, game, image, location, direction, points, shoot_interval=None):
         super().__init__()
+        self.game = game
         self.set_image(image, location)
         self.direction = direction
         self.points = points
+        self.shoot_interval = shoot_interval
+        self.next_shoot_time = None
 
     def reverse_x(self):
         x, y = self.direction
@@ -112,11 +115,28 @@ class Enemy(SpriteBase):
         x, y = self.direction
         self.direction = (x, -y)
 
-    def update(self):
+    def shoot_maybe(self, current_time):
+        if self.shoot_interval is None:
+            # We are not a shooting enemy
+            return
+
+        if self.next_shoot_time is None:
+            self.next_shoot_time = current_time + self.shoot_interval
+            return
+        if current_time >= self.next_shoot_time:
+            # Time to shoot!
+            torp_pos = self.rect.midbottom
+            torp_dir = (0, 5)
+            self.game.enemy_shoot(torp_pos, torp_dir)
+            self.next_shoot_time += self.shoot_interval
+
+    def update(self, current_time):
         super().update()
 
         if self.dying:
             return
+
+        self.shoot_maybe(current_time)
 
         # Move around randomly without input
         pos = self.rect.move(self.direction)
@@ -146,8 +166,8 @@ green_image = load_image("green_ship.png")
 green_image = pygame.transform.flip(green_image, True, True)
 blue_image = load_image("blue_ship.png")
 blue_image = pygame.transform.flip(blue_image, True, True)
-
-torpedo_image = load_image("torpedo.png")
+green_torpedo_image = load_image("green_torpedo.png")
+blue_torpedo_image = load_image("blue_torpedo.png")
 explosions = [
     load_image("explosion1.png"),
     load_image("explosion2.png"),
@@ -205,7 +225,8 @@ class SpaceshipGame:
         self.spaceship = Spaceship(red_image)
         self.players = pygame.sprite.GroupSingle(self.spaceship)
         self.enemies = pygame.sprite.RenderPlain()
-        self.projectiles = pygame.sprite.RenderPlain()
+        self.player_shots = pygame.sprite.RenderPlain()
+        self.enemy_shots = pygame.sprite.RenderPlain()
 
         # Remember all the keys that are pressed.
         self.active_keys = []
@@ -240,8 +261,12 @@ class SpaceshipGame:
             return
         torp_pos = self.spaceship.rect.midtop
         torp_dir = (0, -5)
-        torpedo = Projectile(torpedo_image, torp_pos, torp_dir)
-        self.projectiles.add(torpedo)
+        torpedo = Projectile(green_torpedo_image, torp_pos, torp_dir)
+        self.player_shots.add(torpedo)
+
+    def enemy_shoot(self, torp_pos, torp_dir):
+        torpedo = Projectile(blue_torpedo_image, torp_pos, torp_dir)
+        self.enemy_shots.add(torpedo)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -281,7 +306,7 @@ class SpaceshipGame:
             location = (randint(40, 460), 20)
             x_direction = -2 + 4 * getrandbits(1)
             direction = (x_direction, 2)
-            new_enemy = Enemy(green_image, location, direction, REGULAR_ENEMY_POINTS)
+            new_enemy = Enemy(self, green_image, location, direction, REGULAR_ENEMY_POINTS)
             self.enemies.add(new_enemy)
             self.enemy_spawn_time += self.spawn_delay
 
@@ -302,26 +327,48 @@ class SpaceshipGame:
             location = (randint(40, 460), 20)
             x_direction = -3 + 6 * getrandbits(1)
             direction = (x_direction, 0)
-            new_enemy = Enemy(blue_image, location, direction, FIGHTER_ENEMY_POINTS)
+            new_enemy = Enemy(self, blue_image, location, direction, FIGHTER_ENEMY_POINTS, shoot_interval=1000)
             self.enemies.add(new_enemy)
+
+    def player_death(self, player_ship):
+        if not player_ship.dying:
+            player_ship.die(Animation(explosions, 10))
+            self.exit_time = pygame.time.get_ticks() + 1000 # milliseconds
 
     def sprite_updates(self):
         self.players.update()
-        self.enemies.update()
-        self.projectiles.update()
-        collide_dict = pygame.sprite.groupcollide(
-                self.enemies,
-                self.projectiles,
+        self.enemies.update(self.current_time)
+        self.player_shots.update()
+        self.enemy_shots.update()
+
+        # Handle collisions between enemy shots and player ships.
+        hit_player_dict = pygame.sprite.groupcollide(
+                self.players,
+                self.enemy_shots,
                 False,
                 True,
                 pygame.sprite.collide_mask)
-        for hit_enemy in collide_dict:
+        for hit_player in hit_player_dict:
+            self.player_death(hit_player)
+
+        # Handle collisions between player shots and enemy ships.
+
+        hit_enemy_dict = pygame.sprite.groupcollide(
+                self.enemies,
+                self.player_shots,
+                False,
+                True,
+                pygame.sprite.collide_mask)
+        for hit_enemy in hit_enemy_dict:
             if not hit_enemy.dying:
                 self.score += hit_enemy.points
                 self.redraw_background()
                 hit_enemy.die(Animation(explosions, 10))
                 self.enemies_killed += 1
                 self.spawn_fighters()
+
+        # Handle collisions between enemy ships and player ships.
+
         collide_dict = pygame.sprite.groupcollide(
                 self.players,
                 self.enemies,
@@ -329,18 +376,17 @@ class SpaceshipGame:
                 False,
                 pygame.sprite.collide_mask)
         for hit_player, hit_enemies in collide_dict.items():
-            if not hit_player.dying:
-                hit_player.die(Animation(explosions, 10))
+            self.player_death(hit_player)
             for hit_enemy in hit_enemies:
                 if not hit_enemy.dying:
                     hit_enemy.die(Animation(explosions, 10))
-            self.exit_time = pygame.time.get_ticks() + 1000 # milliseconds
 
     def draw(self):
         self.screen.blit(self.background, (0, 0))
         self.players.draw(self.screen)
         self.enemies.draw(self.screen)
-        self.projectiles.draw(self.screen)
+        self.player_shots.draw(self.screen)
+        self.enemy_shots.draw(self.screen)
         pygame.display.flip()
 
     def init_level(self):
