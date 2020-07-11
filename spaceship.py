@@ -14,6 +14,13 @@ def load_image(filename):
     image = pygame.image.load(fullname)
     return image
 
+def load_sound(filename):
+    if not pygame.mixer.get_init():
+        pygame.mixer.init(44100, -16, 2, 64)
+    fullname = os.path.join(data_dir, filename)
+    sound = pygame.mixer.Sound(fullname)
+    return sound
+
 class Animation:
     """ A helper class that cycles through a list of images """
 
@@ -177,6 +184,12 @@ explosions = [
     load_image("explosion6.png"),
 ]
 
+# sounds are global
+shoot_sound = load_sound("shoot1.wav")
+shoot_sound.set_volume(0.2)
+explosion1_sound = load_sound("explosion1.wav")
+explosion2_sound = load_sound("explosion2.wav")
+
 REGULAR_ENEMY_POINTS = 100
 FIGHTER_ENEMY_POINTS = 300
 
@@ -263,6 +276,7 @@ class SpaceshipGame:
         torp_dir = (0, -5)
         torpedo = Projectile(green_torpedo_image, torp_pos, torp_dir)
         self.player_shots.add(torpedo)
+        shoot_sound.play()
 
     def enemy_shoot(self, torp_pos, torp_dir):
         torpedo = Projectile(blue_torpedo_image, torp_pos, torp_dir)
@@ -333,7 +347,8 @@ class SpaceshipGame:
     def player_death(self, player_ship):
         if not player_ship.dying:
             player_ship.die(Animation(explosions, 10))
-            self.exit_time = pygame.time.get_ticks() + 1000 # milliseconds
+            self.exit_time = pygame.time.get_ticks() + 3000 # milliseconds
+            explosion2_sound.play()
 
     def sprite_updates(self):
         self.players.update()
@@ -364,6 +379,7 @@ class SpaceshipGame:
                 self.score += hit_enemy.points
                 self.redraw_background()
                 hit_enemy.die(Animation(explosions, 10))
+                explosion1_sound.play()
                 self.enemies_killed += 1
                 self.spawn_fighters()
 
