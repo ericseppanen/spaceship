@@ -23,13 +23,18 @@ pub struct ProjectileBundle {
 
 #[derive(Component)]
 pub struct Weapon {
+    // Vector determines the direction and velocity of the projectile.
+    aim_vector: Vec2,
+    // Time in seconds to recharge after a shot.
     ready_timer: Timer,
 }
 
 impl Weapon {
-    pub fn new(recharge_time: f32) -> Self {
+    pub fn new(aim_vector: Vec2, recharge_time: f32) -> Self {
+        let ready_timer = Timer::from_seconds(recharge_time, TimerMode::Once);
         Self {
-            ready_timer: Timer::from_seconds(recharge_time, TimerMode::Once),
+            aim_vector,
+            ready_timer,
         }
     }
 }
@@ -66,7 +71,7 @@ fn fire_weapon(
         ..default()
     };
     let projectile = Projectile {
-        velocity_vector: Vec2 { x: 0.0, y: 400.0 },
+        velocity_vector: weapon.aim_vector,
         owner: event.0,
     };
     let bundle = ProjectileBundle { projectile, sprite };

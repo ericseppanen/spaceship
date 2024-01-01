@@ -23,7 +23,8 @@ pub struct PlayerBundle {
 
 impl Default for PlayerBundle {
     fn default() -> Self {
-        let weapon = Weapon::new(0.25);
+        let aim = Vec2 { x: 0.0, y: 400.0 };
+        let weapon = Weapon::new(aim, 0.25);
         Self {
             player: Default::default(),
             sprite: Default::default(),
@@ -48,7 +49,7 @@ fn player_movement(
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
     // for ScanCode(code) in input.get_pressed() {
-    //     println!("scancode {code:#x}");
+    //     info!("scancode {code:#x}");
     // }
 
     // We could iterate, but since we're hard-coding the
@@ -82,11 +83,12 @@ fn player_movement(
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
-
     let texture = asset_server.load("red_ship.png");
+    let transform = Transform::from_translation(Vec3::new(0.0, -300.0, 0.0));
+
     let sprite = SpriteBundle {
         texture,
+        transform,
         ..default()
     };
     let player = PlayerBundle {
