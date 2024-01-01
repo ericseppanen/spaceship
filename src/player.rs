@@ -3,6 +3,9 @@ use bevy::prelude::*;
 use crate::scancodes;
 use crate::weapon::{Weapon, WeaponFireEvent};
 
+const PLAYER_SPEED: f32 = 200.0;
+const PLAYER_PROJECTILE_VELOCITY: f32 = 400.0;
+
 #[derive(Component)]
 pub struct Player {
     pub speed: f32,
@@ -10,7 +13,9 @@ pub struct Player {
 
 impl Default for Player {
     fn default() -> Self {
-        Self { speed: 200.0 }
+        Self {
+            speed: PLAYER_SPEED,
+        }
     }
 }
 
@@ -23,7 +28,10 @@ pub struct PlayerBundle {
 
 impl Default for PlayerBundle {
     fn default() -> Self {
-        let aim = Vec2 { x: 0.0, y: 400.0 };
+        let aim = Vec2 {
+            x: 0.0,
+            y: PLAYER_PROJECTILE_VELOCITY,
+        };
         let weapon = Weapon::new(aim, 0.25);
         Self {
             player: Default::default(),
@@ -54,7 +62,9 @@ fn player_movement(
 
     // We could iterate, but since we're hard-coding the
     // keyboard controls, that wouldn't make sense.
-    let (mut transform, player, entity) = players.single_mut();
+    let Ok((mut transform, player, entity)) = players.get_single_mut() else {
+        return;
+    };
 
     let move_delta = player.speed * time.delta_seconds();
 

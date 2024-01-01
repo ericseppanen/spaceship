@@ -12,7 +12,8 @@ impl Plugin for WeaponsPlugin {
 #[derive(Component)]
 pub struct Projectile {
     pub velocity_vector: Vec2,
-    pub owner: Entity,
+    /// Player projectiles can't hurt players; enemy projectiles can't hurt enemies.
+    pub player: bool,
 }
 
 #[derive(Bundle)]
@@ -72,7 +73,7 @@ fn fire_weapon(
     };
     let projectile = Projectile {
         velocity_vector: weapon.aim_vector,
-        owner: event.0,
+        player: true,
     };
     let bundle = ProjectileBundle { projectile, sprite };
 

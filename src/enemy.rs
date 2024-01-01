@@ -2,6 +2,9 @@ use bevy::prelude::*;
 
 use crate::weapon::{Weapon, WeaponFireEvent};
 
+const ENEMY_SPEED: f32 = 100.0;
+const ENEMY_PROJECTILE_VELOCITY: f32 = 400.0;
+
 #[derive(Resource)]
 pub struct EnemySpawner {
     /// Enemies spawned per second.
@@ -37,9 +40,16 @@ pub struct EnemyBundle {
 
 impl EnemyBundle {
     fn new(sprite: SpriteBundle) -> Self {
-        let x = if fastrand::bool() { 100.0 } else { -100.0 };
-        let velocity = Vec2 { x, y: -100.0 };
-        let aim = Vec2 { x: 0.0, y: -400.0 };
+        let x = if fastrand::bool() {
+            ENEMY_SPEED
+        } else {
+            -ENEMY_SPEED
+        };
+        let velocity = Vec2 { x, y: ENEMY_SPEED };
+        let aim = Vec2 {
+            x: 0.0,
+            y: ENEMY_PROJECTILE_VELOCITY,
+        };
         let weapon = Weapon::new(aim, 0.25);
         Self {
             enemy: Enemy { velocity },

@@ -10,5 +10,5 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = "0.12.1"
+bevy = { version = "0.12.1", features = ["wav"] }
 fastrand = "2.0.1"
