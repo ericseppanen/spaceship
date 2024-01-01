@@ -1,14 +1,22 @@
 use bevy::prelude::*;
 
+use crate::player::PlayerPlugin;
+use crate::weapon::WeaponsPlugin;
+
+mod player;
+mod scancodes;
+mod weapon;
+
 fn main() {
     App::new()
         .add_plugins(
             DefaultPlugins
+                // default_nearest() prevents blurring of pixel art
                 .set(ImagePlugin::default_nearest())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Spaceship!".into(),
-                        resolution: (640.0, 480.0).into(),
+                        resolution: (400.0, 800.0).into(),
                         resizable: false,
                         ..default()
                     }),
@@ -16,43 +24,6 @@ fn main() {
                 })
                 .build(),
         )
-        .add_systems(Startup, setup)
-        .add_systems(Update, character_movement)
+        .add_plugins((PlayerPlugin, WeaponsPlugin))
         .run();
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
-
-    let texture = asset_server.load("red_ship.png");
-
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            custom_size: Some(Vec2::new(100.0, 100.0)),
-            ..default()
-        },
-        texture,
-        ..default()
-    });
-}
-
-fn character_movement(
-    mut characters: Query<(&mut Transform, &Sprite)>,
-    input: Res<Input<KeyCode>>,
-    time: Res<Time>,
-) {
-    for (mut transform, _) in &mut characters {
-        if input.pressed(KeyCode::W) {
-            transform.translation.y += 100.0 * time.delta_seconds();
-        }
-        if input.pressed(KeyCode::S) {
-            transform.translation.y -= 100.0 * time.delta_seconds();
-        }
-        if input.pressed(KeyCode::D) {
-            transform.translation.x += 100.0 * time.delta_seconds();
-        }
-        if input.pressed(KeyCode::A) {
-            transform.translation.x -= 100.0 * time.delta_seconds();
-        }
-    }
 }
