@@ -1,3 +1,4 @@
+use bevy::audio::{Volume, VolumeLevel};
 use bevy::prelude::*;
 
 pub struct WeaponsPlugin;
@@ -5,7 +6,26 @@ pub struct WeaponsPlugin;
 impl Plugin for WeaponsPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WeaponFireEvent>()
+            .add_systems(Startup, WeaponAssets::load)
             .add_systems(Update, (charge_weapons, fire_weapon, move_projectiles));
+    }
+}
+
+#[derive(Resource)]
+struct WeaponAssets {
+    player_weapon_sound: Handle<AudioSource>,
+    player_projectile_image: Handle<Image>,
+}
+
+impl WeaponAssets {
+    fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
+        let player_weapon_sound = asset_server.load("shoot1.wav");
+        let player_projectile_image = asset_server.load("green_torpedo.png");
+
+        commands.insert_resource(WeaponAssets {
+            player_weapon_sound,
+            player_projectile_image,
+        });
     }
 }
 
@@ -46,9 +66,9 @@ pub struct WeaponFireEvent(pub Entity);
 /// Handle the `WeaponFireEvent`
 fn fire_weapon(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut event: EventReader<WeaponFireEvent>,
     mut query: Query<(&mut Weapon, &Transform)>,
+    assets: Res<WeaponAssets>,
 ) {
     // Ignore multiple fire events.
     let Some(event) = event.read().next() else {
@@ -65,9 +85,8 @@ fn fire_weapon(
         return;
     }
 
-    let texture = asset_server.load("green_torpedo.png");
     let sprite = SpriteBundle {
-        texture,
+        texture: assets.player_projectile_image.clone_weak(),
         transform: *transform,
         ..default()
     };
@@ -78,6 +97,13 @@ fn fire_weapon(
     let bundle = ProjectileBundle { projectile, sprite };
 
     commands.spawn(bundle);
+    commands.spawn(AudioBundle {
+        source: assets.player_weapon_sound.clone_weak(),
+        settings: PlaybackSettings {
+            volume: Volume::Relative(VolumeLevel::new(0.2)),
+            ..default()
+        },
+    });
 }
 
 /// Advance time in weapons timers.
