@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::window::PresentMode;
 
 use crate::player::PlayerPlugin;
 use crate::weapon::WeaponsPlugin;
@@ -17,6 +18,7 @@ fn main() {
                     primary_window: Some(Window {
                         title: "Spaceship!".into(),
                         resolution: (400.0, 800.0).into(),
+                        present_mode: PresentMode::AutoNoVsync,
                         resizable: false,
                         ..default()
                     }),
