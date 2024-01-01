@@ -1,5 +1,7 @@
-use bevy::audio::{Volume, VolumeLevel};
+use bevy::audio::{PlaybackMode, Volume, VolumeLevel};
 use bevy::prelude::*;
+
+use crate::player::player_movement;
 
 pub struct WeaponsPlugin;
 
@@ -7,7 +9,8 @@ impl Plugin for WeaponsPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<WeaponFireEvent>()
             .add_systems(Startup, WeaponAssets::load)
-            .add_systems(Update, (charge_weapons, fire_weapon, move_projectiles));
+            .add_systems(Update, (charge_weapons, move_projectiles))
+            .add_systems(Update, fire_weapon.after(player_movement));
     }
 }
 
@@ -33,6 +36,7 @@ impl WeaponAssets {
         AudioBundle {
             source: self.player_weapon_sound.clone_weak(),
             settings: PlaybackSettings {
+                mode: PlaybackMode::Despawn,
                 volume: Volume::Relative(VolumeLevel::new(0.2)),
                 ..default()
             },
@@ -82,7 +86,7 @@ fn fire_weapon(
     assets: Res<WeaponAssets>,
 ) {
     // Ignore multiple fire events.
-    let Some(event) = event.read().next() else {
+    let Some(event) = event.read().last() else {
         return;
     };
 

@@ -1,28 +1,36 @@
 use bevy::prelude::*;
 
+use crate::collide::EnemyDeathEvent;
+use crate::level::{Level, LevelEndEvent, LevelRestartEvent};
 use crate::weapon::{Weapon, WeaponFireEvent};
 
-const ENEMY_SPEED: f32 = 100.0;
 const ENEMY_PROJECTILE_VELOCITY: f32 = 400.0;
 
-#[derive(Resource)]
+#[derive(Debug, Default, Resource)]
 pub struct EnemySpawner {
+    /// Enemy movement speed.
+    speed: f32,
     /// Enemies spawned per second.
     rate: f32,
     /// Number of enemies to be spawned.
     spawn_remaining: usize,
+    /// Number of enemies to kill before the level ends.
+    level_remaining: usize,
     /// Time when the next spawn will happen.
     next_spawn: Timer,
 }
 
-impl Default for EnemySpawner {
-    fn default() -> Self {
-        Self {
-            rate: 0.5,
-            spawn_remaining: 5,
-            // The first spawn is delayed a bit.
+impl From<&Level> for EnemySpawner {
+    fn from(level: &Level) -> Self {
+        let this = Self {
+            speed: level.enemy_speed,
+            rate: level.spawn_rate,
+            spawn_remaining: level.num_scout,
+            level_remaining: level.num_scout,
             next_spawn: Timer::from_seconds(3.0, TimerMode::Once),
-        }
+        };
+        info!("{this:?}");
+        this
     }
 }
 
@@ -39,13 +47,9 @@ pub struct EnemyBundle {
 }
 
 impl EnemyBundle {
-    fn new(sprite: SpriteBundle) -> Self {
-        let x = if fastrand::bool() {
-            ENEMY_SPEED
-        } else {
-            -ENEMY_SPEED
-        };
-        let velocity = Vec2 { x, y: ENEMY_SPEED };
+    fn new(sprite: SpriteBundle, speed: f32) -> Self {
+        let x = if fastrand::bool() { speed } else { -speed };
+        let velocity = Vec2 { x, y: speed };
         let aim = Vec2 {
             x: 0.0,
             y: ENEMY_PROJECTILE_VELOCITY,
@@ -63,8 +67,18 @@ pub struct EnemyPlugin;
 
 impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(EnemySpawner::default())
-            .add_systems(Update, (enemy_spawn, enemy_movement));
+        app.add_event::<SpawnerResetEvent>()
+            .insert_resource(EnemySpawner::default())
+            .add_systems(
+                Update,
+                (
+                    enemy_spawn,
+                    enemy_movement,
+                    level_restart_despawn,
+                    reset_spawner,
+                    enemy_death,
+                ),
+            );
     }
 }
 
@@ -141,7 +155,50 @@ fn enemy_spawn(
         transform,
         ..default()
     };
-    let enemy = EnemyBundle::new(sprite);
+    let enemy = EnemyBundle::new(sprite, spawner.speed);
 
     commands.spawn(enemy);
+}
+
+/// Load level settings and reset the spawner.
+#[derive(Event)]
+pub struct SpawnerResetEvent(pub Level);
+
+fn reset_spawner(mut event: EventReader<SpawnerResetEvent>, mut spawner: ResMut<EnemySpawner>) {
+    let Some(SpawnerResetEvent(level)) = event.read().last() else {
+        return;
+    };
+    *spawner = EnemySpawner::from(level);
+}
+
+/// Despawn all enemies due to `LevelRestartEvent`
+fn level_restart_despawn(
+    mut commands: Commands,
+    mut event: EventReader<LevelRestartEvent>,
+    mut spawner: ResMut<EnemySpawner>,
+    enemies: Query<Entity, With<Enemy>>,
+) {
+    let Some(_) = event.read().last() else {
+        return;
+    };
+    // Disable the timer so no new enemies will spawn.
+    spawner.next_spawn.pause();
+
+    for entity in &enemies {
+        commands.entity(entity).despawn();
+    }
+}
+
+/// Count dead enemies and bump the level on the last one.
+fn enemy_death(
+    mut event: EventReader<EnemyDeathEvent>,
+    mut spawner: ResMut<EnemySpawner>,
+    mut level_end: EventWriter<LevelEndEvent>,
+) {
+    for _event in event.read() {
+        spawner.level_remaining = spawner.level_remaining.checked_sub(1).unwrap();
+        if spawner.level_remaining == 0 {
+            level_end.send(LevelEndEvent);
+        }
+    }
 }

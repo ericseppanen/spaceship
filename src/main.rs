@@ -3,11 +3,13 @@ use bevy::window::PresentMode;
 
 use crate::collide::CollisionPlugin;
 use crate::enemy::EnemyPlugin;
+use crate::level::LevelPlugin;
 use crate::player::PlayerPlugin;
 use crate::weapon::WeaponsPlugin;
 
 mod collide;
 mod enemy;
+mod level;
 mod player;
 mod scancodes;
 mod weapon;
@@ -31,7 +33,13 @@ fn main() {
                 .build(),
         )
         .add_systems(Startup, setup)
-        .add_plugins((PlayerPlugin, WeaponsPlugin, EnemyPlugin, CollisionPlugin))
+        .add_plugins((
+            PlayerPlugin,
+            WeaponsPlugin,
+            EnemyPlugin,
+            CollisionPlugin,
+            LevelPlugin,
+        ))
         .run();
 }
 

@@ -1,8 +1,9 @@
-use bevy::audio::{Volume, VolumeLevel};
+use bevy::audio::{PlaybackMode, Volume, VolumeLevel};
 use bevy::math::vec2;
 use bevy::prelude::*;
 
 use crate::enemy::Enemy;
+use crate::level::LevelRestartEvent;
 use crate::player::Player;
 use crate::weapon::Projectile;
 
@@ -63,7 +64,7 @@ impl CollisionAssets {
     fn enemy_death_audio(&self) -> AudioBundle {
         AudioBundle {
             source: self.enemy_death_sound.clone_weak(),
-            ..default()
+            settings: PlaybackSettings::DESPAWN,
         }
     }
 
@@ -72,6 +73,7 @@ impl CollisionAssets {
         AudioBundle {
             source: self.player_death_sound.clone_weak(),
             settings: PlaybackSettings {
+                mode: PlaybackMode::Despawn,
                 volume: Volume::Relative(VolumeLevel::new(0.6)),
                 ..default()
             },
@@ -187,8 +189,10 @@ fn player_death(
     mut commands: Commands,
     query: Query<&Transform>,
     assets: Res<CollisionAssets>,
+    mut level_reset: EventWriter<LevelRestartEvent>,
 ) {
-    if let Some(event) = event.read().next() {
+    // Consume all events (which should be equivalent), keeping the last.
+    if let Some(event) = event.read().last() {
         info!("player died");
         if let Ok(transform) = query.get(event.0) {
             commands.spawn(DeathAnimation::default().to_bundle(transform, &assets));
@@ -197,6 +201,7 @@ fn player_death(
             entity.despawn();
         };
         commands.spawn(assets.player_death_audio());
+        level_reset.send(LevelRestartEvent);
     }
 }
 
