@@ -1,3 +1,4 @@
+use bevy::audio::{Volume, VolumeLevel};
 use bevy::math::vec2;
 use bevy::prelude::*;
 
@@ -25,6 +26,7 @@ impl Plugin for CollisionPlugin {
                     check_enemy_collisions,
                     player_death,
                     enemy_death,
+                    animations,
                 ),
             );
     }
@@ -34,17 +36,46 @@ impl Plugin for CollisionPlugin {
 struct CollisionAssets {
     enemy_death_sound: Handle<AudioSource>,
     player_death_sound: Handle<AudioSource>,
+    death_animation: Vec<Handle<Image>>,
 }
 
 impl CollisionAssets {
     fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
         let enemy_death_sound = asset_server.load("explosion1.wav");
         let player_death_sound = asset_server.load("explosion2.wav");
+        let death_animation = vec![
+            asset_server.load("explosion1.png"),
+            asset_server.load("explosion2.png"),
+            asset_server.load("explosion3.png"),
+            asset_server.load("explosion4.png"),
+            asset_server.load("explosion5.png"),
+            asset_server.load("explosion6.png"),
+        ];
 
         commands.insert_resource(CollisionAssets {
             enemy_death_sound,
             player_death_sound,
+            death_animation,
         });
+    }
+
+    /// Create a bundle to play the enemy death audio.
+    fn enemy_death_audio(&self) -> AudioBundle {
+        AudioBundle {
+            source: self.enemy_death_sound.clone_weak(),
+            ..default()
+        }
+    }
+
+    /// Create a bundle to play the player death audio.
+    fn player_death_audio(&self) -> AudioBundle {
+        AudioBundle {
+            source: self.player_death_sound.clone_weak(),
+            settings: PlaybackSettings {
+                volume: Volume::Relative(VolumeLevel::new(0.6)),
+                ..default()
+            },
+        }
     }
 }
 
@@ -54,16 +85,13 @@ pub struct PlayerDeathEvent(Entity);
 #[derive(Event)]
 pub struct EnemyDeathEvent(Entity);
 
-/// Check if something destructible has collided with something else
+/// Check if the player has collided with something.
 ///
-/// Collisions that cause destruction:
-/// - player shots hitting enemies
+/// Collisions that we act on:
 /// - enemy shots hitting players
 /// - player ship hitting enemy ship (destroys both)
 ///
 /// Collisions that are ignored:
-/// - enemy ship overlapping enemy ship
-/// - enemy shots hitting enemies
 /// - player shots hitting players
 /// - projectiles hitting other projectiles
 ///
@@ -114,7 +142,16 @@ fn check_player_collisions(
     }
 }
 
-/// Check for collisions between enemy ships and player projectiles
+/// Check if the enemies have collided with something.
+///
+/// Collisions that we act on:
+/// - player shots hitting enemies
+///
+/// Collisions that are ignored:
+/// - enemy ships hitting each other
+/// - enemy shots hitting enemies
+/// - projectiles hitting other projectiles
+///
 fn check_enemy_collisions(
     mut commands: Commands,
     projectiles_query: Query<(&Transform, &Projectile, Entity)>,
@@ -144,38 +181,93 @@ fn check_enemy_collisions(
     }
 }
 
-// Handle player death
+/// Handle player death.
 fn player_death(
     mut event: EventReader<PlayerDeathEvent>,
     mut commands: Commands,
+    query: Query<&Transform>,
     assets: Res<CollisionAssets>,
 ) {
     if let Some(event) = event.read().next() {
         info!("player died");
+        if let Ok(transform) = query.get(event.0) {
+            commands.spawn(DeathAnimation::default().to_bundle(transform, &assets));
+        }
         if let Some(mut entity) = commands.get_entity(event.0) {
             entity.despawn();
-            commands.spawn(AudioBundle {
-                source: assets.player_death_sound.clone_weak(),
-                ..default()
-            });
-        }
+        };
+        commands.spawn(assets.player_death_audio());
     }
 }
 
-// Handle enemy death
+/// Handle enemy death.
 fn enemy_death(
     mut event: EventReader<EnemyDeathEvent>,
     mut commands: Commands,
+    query: Query<&Transform>,
     assets: Res<CollisionAssets>,
 ) {
     for event in event.read() {
         info!("enemy {:?} died", event.0);
+        if let Ok(transform) = query.get(event.0) {
+            commands.spawn(DeathAnimation::default().to_bundle(transform, &assets));
+        }
         if let Some(mut entity) = commands.get_entity(event.0) {
             entity.despawn();
-            commands.spawn(AudioBundle {
-                source: assets.enemy_death_sound.clone_weak(),
-                ..default()
-            });
+        };
+        // FIXME: if the player also died, should we suppress this audio?
+        commands.spawn(assets.enemy_death_audio());
+    }
+}
+
+#[derive(Component)]
+struct DeathAnimation {
+    index: usize,
+    timer: Timer,
+}
+
+impl Default for DeathAnimation {
+    fn default() -> Self {
+        Self {
+            index: 0,
+            timer: Timer::from_seconds(0.050, TimerMode::Repeating),
+        }
+    }
+}
+
+impl DeathAnimation {
+    fn to_bundle(self, transform: &Transform, assets: &CollisionAssets) -> (Self, SpriteBundle) {
+        let sprite = SpriteBundle {
+            texture: assets.death_animation[0].clone_weak(),
+            transform: transform.clone(),
+            ..default()
+        };
+        (self, sprite)
+    }
+}
+
+/// Play the death animations.
+///
+/// The entity will be despawned when the animation completes.
+fn animations(
+    mut commands: Commands,
+    mut animation_query: Query<(&mut Handle<Image>, &mut DeathAnimation, Entity)>,
+    assets: Res<CollisionAssets>,
+    time: Res<Time>,
+) {
+    for (mut sprite_image, mut animation, entity) in &mut animation_query {
+        animation.timer.tick(time.delta());
+        if animation.timer.just_finished() {
+            animation.index += 1;
+            match assets.death_animation.get(animation.index) {
+                Some(handle) => {
+                    *sprite_image = handle.clone_weak();
+                }
+                None => {
+                    // end of animation.
+                    commands.entity(entity).despawn();
+                }
+            }
         }
     }
 }

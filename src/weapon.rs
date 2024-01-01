@@ -27,6 +27,17 @@ impl WeaponAssets {
             player_projectile_image,
         });
     }
+
+    /// Create an AudioBundle that will play the player weapon sound.
+    fn player_weapon_audio(&self) -> AudioBundle {
+        AudioBundle {
+            source: self.player_weapon_sound.clone_weak(),
+            settings: PlaybackSettings {
+                volume: Volume::Relative(VolumeLevel::new(0.2)),
+                ..default()
+            },
+        }
+    }
 }
 
 #[derive(Component)]
@@ -97,13 +108,7 @@ fn fire_weapon(
     let bundle = ProjectileBundle { projectile, sprite };
 
     commands.spawn(bundle);
-    commands.spawn(AudioBundle {
-        source: assets.player_weapon_sound.clone_weak(),
-        settings: PlaybackSettings {
-            volume: Volume::Relative(VolumeLevel::new(0.2)),
-            ..default()
-        },
-    });
+    commands.spawn(assets.player_weapon_audio());
 }
 
 /// Advance time in weapons timers.
