@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::enemy::SpawnerResetEvent;
 use crate::player::PlayerSpawnEvent;
+use crate::ui::ShowLevelEvent;
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -75,11 +76,15 @@ fn level_start(
     mut current_level: ResMut<CurrentLevel>,
     mut spawn_player: EventWriter<PlayerSpawnEvent>,
     mut enemies: EventWriter<SpawnerResetEvent>,
+    mut level_text: EventWriter<ShowLevelEvent>,
 ) {
     current_level.level_start_timer.tick(time.delta());
 
     if current_level.level_start_timer.just_finished() {
         info!("start level {}", current_level.number);
+
+        level_text.send(ShowLevelEvent(format!("LEVEL {}", current_level.number)));
+
         spawn_player.send(PlayerSpawnEvent);
         enemies.send(SpawnerResetEvent(current_level.level.clone()));
     }

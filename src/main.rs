@@ -5,6 +5,7 @@ use crate::collide::CollisionPlugin;
 use crate::enemy::EnemyPlugin;
 use crate::level::LevelPlugin;
 use crate::player::PlayerPlugin;
+use crate::ui::UiPlugin;
 use crate::weapon::WeaponsPlugin;
 
 mod collide;
@@ -12,6 +13,7 @@ mod enemy;
 mod level;
 mod player;
 mod scancodes;
+mod ui;
 mod weapon;
 
 fn main() {
@@ -39,6 +41,7 @@ fn main() {
             EnemyPlugin,
             CollisionPlugin,
             LevelPlugin,
+            UiPlugin,
         ))
         .run();
 }
