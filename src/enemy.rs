@@ -1,3 +1,6 @@
+use std::collections::VecDeque;
+
+use bevy::math::vec2;
 use bevy::prelude::*;
 
 use crate::collide::EnemyDeathEvent;
@@ -6,14 +9,30 @@ use crate::weapon::{Weapon, WeaponFireEvent};
 
 const ENEMY_PROJECTILE_VELOCITY: f32 = 400.0;
 
+#[derive(Resource)]
+struct EnemyAssets {
+    scout_image: Handle<Image>,
+    fighter_image: Handle<Image>,
+}
+
+impl EnemyAssets {
+    fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
+        let scout_image = asset_server.load("green_ship.png");
+        let fighter_image = asset_server.load("blue_ship.png");
+
+        commands.insert_resource(EnemyAssets {
+            scout_image,
+            fighter_image,
+        });
+    }
+}
+
 #[derive(Debug, Default, Resource)]
 pub struct EnemySpawner {
-    /// Enemy movement speed.
-    speed: f32,
     /// Enemies spawned per second.
     rate: f32,
-    /// Number of enemies to be spawned.
-    spawn_remaining: usize,
+    /// Enemies waiting to be spawned.
+    spawn_queue: VecDeque<Enemy>,
     /// Number of enemies to kill before the level ends.
     level_remaining: usize,
     /// Time when the next spawn will happen.
@@ -22,11 +41,26 @@ pub struct EnemySpawner {
 
 impl From<&Level> for EnemySpawner {
     fn from(level: &Level) -> Self {
+        let mut spawn_queue = VecDeque::with_capacity(level.num_scout + level.num_fighter);
+        // How many scouts spawn between fighters.
+        let fighter_cadence = level.num_scout / level.num_fighter;
+        for count in 0..level.num_scout {
+            spawn_queue.push_back(Enemy::Scout {
+                speed: level.enemy_speed,
+            });
+
+            if (1 + count) % fighter_cadence == 0 {
+                info!("count {count} fighter_cadence {fighter_cadence} -> spawn fighter");
+                spawn_queue.push_back(Enemy::Fighter {
+                    speed: level.enemy_speed,
+                })
+            }
+        }
+
         let this = Self {
-            speed: level.enemy_speed,
             rate: level.spawn_rate,
-            spawn_remaining: level.num_scout,
-            level_remaining: level.num_scout,
+            spawn_queue,
+            level_remaining: level.num_scout + level.num_fighter,
             next_spawn: Timer::from_seconds(3.0, TimerMode::Once),
         };
         info!("{this:?}");
@@ -34,31 +68,98 @@ impl From<&Level> for EnemySpawner {
     }
 }
 
-#[derive(Component)]
-pub struct Enemy {
-    pub velocity: Vec2,
+#[derive(Debug, Component)]
+pub enum Enemy {
+    Scout { speed: f32 },
+    Fighter { speed: f32 },
 }
 
-#[derive(Bundle)]
+#[derive(Debug, Component)]
+pub enum MovementPattern {
+    Zigzag(Vec2),
+    LeftRight(f32),
+}
+
+#[derive(Component)]
+struct WeaponBehavior {
+    timer: Timer,
+}
+
+impl WeaponBehavior {}
+
 pub struct EnemyBundle {
     enemy: Enemy,
+    movement: MovementPattern,
     sprite: SpriteBundle,
-    weapon: Weapon,
+    weapon: Option<Weapon>,
+    weapon_behavior: Option<WeaponBehavior>,
 }
 
 impl EnemyBundle {
-    fn new(sprite: SpriteBundle, speed: f32) -> Self {
-        let x = if fastrand::bool() { speed } else { -speed };
-        let velocity = Vec2 { x, y: speed };
-        let aim = Vec2 {
-            x: 0.0,
-            y: ENEMY_PROJECTILE_VELOCITY,
+    fn spawn(self, commands: &mut Commands) {
+        let mut commands = commands.spawn((self.enemy, self.movement, self.sprite));
+        if let Some(weapon) = self.weapon {
+            commands.insert(weapon);
+        }
+        if let Some(weapon_behavior) = self.weapon_behavior {
+            commands.insert(weapon_behavior);
+        }
+    }
+}
+
+impl Enemy {
+    fn make_bundle(self, assets: &EnemyAssets) -> EnemyBundle {
+        let movement = match &self {
+            Enemy::Scout { speed } => {
+                let x = if fastrand::bool() { *speed } else { -*speed };
+                MovementPattern::Zigzag(vec2(x, *speed))
+            }
+            Enemy::Fighter { speed } => {
+                let x = if fastrand::bool() { *speed } else { -*speed };
+                MovementPattern::LeftRight(x)
+            }
         };
-        let weapon = Weapon::new(aim, 0.25);
-        Self {
-            enemy: Enemy { velocity },
+
+        let texture = match &self {
+            Enemy::Scout { .. } => assets.scout_image.clone_weak(),
+            Enemy::Fighter { .. } => assets.fighter_image.clone_weak(),
+        };
+        let rand = fastrand::f32();
+        let x = (rand * 400.0) - 200.0;
+
+        let spawn_point = match &self {
+            Enemy::Scout { .. } => vec2(x, 410.0),
+            Enemy::Fighter { .. } => vec2(x, 370.0),
+        };
+
+        let transform = Transform::from_translation(spawn_point.extend(0.0));
+        let sprite = Sprite {
+            flip_y: true,
+            ..default()
+        };
+        let sprite = SpriteBundle {
+            sprite,
+            texture,
+            transform,
+            ..default()
+        };
+
+        let aim = vec2(0.0, -ENEMY_PROJECTILE_VELOCITY);
+        let (weapon, weapon_behavior) = match &self {
+            Enemy::Scout { .. } => (None, None),
+            Enemy::Fighter { .. } => (
+                Some(Weapon::new(aim, 0.25)),
+                Some(WeaponBehavior {
+                    timer: Timer::from_seconds(2.0, TimerMode::Repeating),
+                }),
+            ),
+        };
+        EnemyBundle {
+            enemy: self,
+            movement,
             sprite,
             weapon,
+            weapon_behavior,
         }
     }
 }
@@ -69,11 +170,13 @@ impl Plugin for EnemyPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnerResetEvent>()
             .insert_resource(EnemySpawner::default())
+            .add_systems(Startup, EnemyAssets::load)
             .add_systems(
                 Update,
                 (
                     enemy_spawn,
                     enemy_movement,
+                    enemy_weapons,
                     level_restart_despawn,
                     reset_spawner,
                     enemy_death,
@@ -83,52 +186,85 @@ impl Plugin for EnemyPlugin {
 }
 
 fn enemy_movement(
-    mut enemies: Query<(&mut Transform, &mut Enemy)>,
+    mut enemies: Query<(&mut Transform, &mut MovementPattern), With<Enemy>>,
     time: Res<Time>,
-    mut _event_sender: EventWriter<WeaponFireEvent>, // FIXME add enemy weapons
 ) {
-    for (mut transform, mut enemy) in &mut enemies {
-        let move_vec = enemy.velocity * time.delta_seconds();
-        transform.translation += move_vec.extend(0.0);
+    for (mut transform, mut movement) in &mut enemies {
+        match &mut *movement {
+            MovementPattern::LeftRight(x_velocity) => {
+                let move_x = *x_velocity * time.delta_seconds();
+                transform.translation.x += move_x;
 
-        // horizontal bounce
-        let x = enemy.velocity.x;
-        if x > 0.0 {
-            if transform.translation.x > 200.0 {
-                enemy.velocity.x = -x;
+                if *x_velocity > 0.0 {
+                    if transform.translation.x > 200.0 {
+                        *x_velocity = -*x_velocity;
+                    }
+                } else {
+                    if transform.translation.x < -200.0 {
+                        *x_velocity = -*x_velocity;
+                    }
+                }
             }
-        } else {
-            if transform.translation.x < -200.0 {
-                enemy.velocity.x = -x;
+            MovementPattern::Zigzag(velocity) => {
+                let move_vec = *velocity * time.delta_seconds();
+                transform.translation += move_vec.extend(0.0);
+
+                // horizontal bounce
+                if velocity.x > 0.0 {
+                    if transform.translation.x > 200.0 {
+                        velocity.x = -velocity.x;
+                    }
+                } else {
+                    if transform.translation.x < -200.0 {
+                        velocity.x = -velocity.x;
+                    }
+                }
+
+                // vertical bounce
+                if velocity.y > 0.0 {
+                    if transform.translation.y > 400.0 {
+                        velocity.y = -velocity.y;
+                    }
+                } else {
+                    if transform.translation.y < -400.0 {
+                        velocity.y = -velocity.y;
+                    }
+                }
             }
         }
+    }
+}
 
-        // vertical bounce
-        let y = enemy.velocity.y;
-        if y > 0.0 {
-            if transform.translation.y > 400.0 {
-                enemy.velocity.y = -y;
-            }
-        } else {
-            if transform.translation.y < -400.0 {
-                enemy.velocity.y = -y;
-            }
+fn enemy_weapons(
+    time: Res<Time>,
+    mut enemies: Query<(&mut WeaponBehavior, Entity), With<Enemy>>,
+    mut event_sender: EventWriter<WeaponFireEvent>,
+) {
+    for (mut behavior, entity) in &mut enemies {
+        behavior.timer.tick(time.delta());
+        if behavior.timer.just_finished() {
+            info!("enemy {entity:?} firing weapon");
+            event_sender.send(WeaponFireEvent(entity));
         }
     }
 }
 
 fn enemy_spawn(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    assets: Res<EnemyAssets>,
     time: Res<Time>,
     mut spawner: ResMut<EnemySpawner>,
 ) {
+    let enemy;
     // If the timer has expired, reset it if there are still enemies left to spawn.
     if spawner.next_spawn.just_finished() {
-        if spawner.spawn_remaining == 0 {
-            // no more spawning to do.
-            return;
-        }
+        match spawner.spawn_queue.pop_front() {
+            Some(e) => enemy = e,
+            None => {
+                // no more spawning to do.
+                return;
+            }
+        };
         let new_timer = Timer::from_seconds(1.0 / spawner.rate, TimerMode::Once);
         spawner.next_spawn = new_timer;
     } else {
@@ -138,26 +274,8 @@ fn enemy_spawn(
     }
 
     // Spawn a new enemy.
-    info!("spawn enemy");
-    spawner.spawn_remaining -= 1;
-
-    let texture = asset_server.load("green_ship.png");
-    let rand = fastrand::f32();
-    let x = (rand * 400.0) - 200.0;
-    let transform = Transform::from_translation(Vec3::new(x, 410.0, 0.0));
-    let sprite = Sprite {
-        flip_y: true,
-        ..default()
-    };
-    let sprite = SpriteBundle {
-        sprite,
-        texture,
-        transform,
-        ..default()
-    };
-    let enemy = EnemyBundle::new(sprite, spawner.speed);
-
-    commands.spawn(enemy);
+    info!("spawn enemy {enemy:?}");
+    enemy.make_bundle(&assets).spawn(&mut commands);
 }
 
 /// Load level settings and reset the spawner.

@@ -1,7 +1,7 @@
 use bevy::audio::{PlaybackMode, Volume, VolumeLevel};
 use bevy::prelude::*;
 
-use crate::player::player_movement;
+use crate::player::{player_movement, Player};
 
 pub struct WeaponsPlugin;
 
@@ -18,21 +18,24 @@ impl Plugin for WeaponsPlugin {
 struct WeaponAssets {
     player_weapon_sound: Handle<AudioSource>,
     player_projectile_image: Handle<Image>,
+    enemy_projectile_image: Handle<Image>,
 }
 
 impl WeaponAssets {
     fn load(mut commands: Commands, asset_server: Res<AssetServer>) {
         let player_weapon_sound = asset_server.load("shoot1.wav");
         let player_projectile_image = asset_server.load("green_torpedo.png");
+        let enemy_projectile_image = asset_server.load("blue_torpedo.png");
 
         commands.insert_resource(WeaponAssets {
             player_weapon_sound,
             player_projectile_image,
+            enemy_projectile_image,
         });
     }
 
-    /// Create an AudioBundle that will play the player weapon sound.
-    fn player_weapon_audio(&self) -> AudioBundle {
+    /// Create an AudioBundle that will play the weapon sound.
+    fn weapon_audio(&self) -> AudioBundle {
         AudioBundle {
             source: self.player_weapon_sound.clone_weak(),
             settings: PlaybackSettings {
@@ -82,37 +85,52 @@ pub struct WeaponFireEvent(pub Entity);
 fn fire_weapon(
     mut commands: Commands,
     mut event: EventReader<WeaponFireEvent>,
-    mut query: Query<(&mut Weapon, &Transform)>,
+    mut query: Query<(&mut Weapon, &Transform, Option<&Player>)>,
     assets: Res<WeaponAssets>,
 ) {
     // Ignore multiple fire events.
-    let Some(event) = event.read().last() else {
-        return;
-    };
+    for event in event.read() {
+        let (mut weapon, transform, player) =
+            query.get_mut(event.0).expect("missing weapon in entity");
 
-    let (mut weapon, transform) = query.get_mut(event.0).expect("missing weapon in entity");
+        let timer = &mut weapon.ready_timer;
+        if timer.finished() {
+            timer.reset();
+        } else {
+            // weapon is still charging, do nothing.
+            return;
+        }
 
-    let timer = &mut weapon.ready_timer;
-    if timer.finished() {
-        timer.reset();
-    } else {
-        // weapon is still charging, do nothing.
-        return;
+        let sprite = if player.is_some() {
+            let texture = assets.player_projectile_image.clone_weak();
+            SpriteBundle {
+                texture,
+                transform: *transform,
+                ..default()
+            }
+        } else {
+            let texture = assets.enemy_projectile_image.clone_weak();
+            let sprite = Sprite {
+                flip_y: true,
+                ..default()
+            };
+            SpriteBundle {
+                sprite,
+                texture,
+                transform: *transform,
+                ..default()
+            }
+        };
+
+        let projectile = Projectile {
+            velocity_vector: weapon.aim_vector,
+            player: player.is_some(),
+        };
+        let bundle = ProjectileBundle { projectile, sprite };
+
+        commands.spawn(bundle);
+        commands.spawn(assets.weapon_audio());
     }
-
-    let sprite = SpriteBundle {
-        texture: assets.player_projectile_image.clone_weak(),
-        transform: *transform,
-        ..default()
-    };
-    let projectile = Projectile {
-        velocity_vector: weapon.aim_vector,
-        player: true,
-    };
-    let bundle = ProjectileBundle { projectile, sprite };
-
-    commands.spawn(bundle);
-    commands.spawn(assets.player_weapon_audio());
 }
 
 /// Advance time in weapons timers.
