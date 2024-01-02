@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use crate::collide::EnemyDeathEvent;
 use crate::level::{Level, LevelEndEvent, LevelRestartEvent};
+use crate::ui::Score;
 use crate::weapon::{Weapon, WeaponFireEvent};
 
 const ENEMY_PROJECTILE_VELOCITY: f32 = 400.0;
@@ -312,8 +313,10 @@ fn enemy_death(
     mut event: EventReader<EnemyDeathEvent>,
     mut spawner: ResMut<EnemySpawner>,
     mut level_end: EventWriter<LevelEndEvent>,
+    mut score: ResMut<Score>
 ) {
     for _event in event.read() {
+        score.0 += 100;
         spawner.level_remaining = spawner.level_remaining.checked_sub(1).unwrap();
         if spawner.level_remaining == 0 {
             level_end.send(LevelEndEvent);
