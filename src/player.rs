@@ -76,13 +76,28 @@ impl Plugin for PlayerPlugin {
     }
 }
 
+/// Calibrate the analog inputs a bit.
+///
+/// Add a dead zone near 0.0, and set the max output at 90% deflection.
+fn tune_analog(input: f32) -> f32 {
+    let sign = input.signum();
+    let mut value = input.abs();
+    // scale (0.05, 0.90) to (0.0, 1.0)
+    value -= 0.05;
+    value /= 0.85;
+    value.clamp(0.0, 1.0) * sign
+}
+
 pub fn player_movement(
     mut players: Query<(&mut Transform, &Player, Entity)>,
-    input: Res<Input<ScanCode>>,
+    keyboard: Res<Input<ScanCode>>,
+    gamepads: Res<Gamepads>,
+    button_inputs: Res<Input<GamepadButton>>,
+    axes: Res<Axis<GamepadAxis>>,
     time: Res<Time>,
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
-    // for ScanCode(code) in input.get_pressed() {
+    // for ScanCode(code) in keyboard.get_pressed() {
     //     info!("scancode {code:#x}");
     // }
 
@@ -94,17 +109,35 @@ pub fn player_movement(
 
     let move_delta = player.speed * time.delta_seconds();
 
-    if input.pressed(scancodes::UP) {
+    let mut analog_x = None;
+    let mut analog_y = None;
+    let mut fire_button = false;
+    // FIXME: gracefully handle >1 gamepads
+    if let Some(gamepad) = gamepads.iter().next() {
+        analog_x = axes
+            .get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX))
+            .map(tune_analog);
+        analog_y = axes
+            .get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickY))
+            .map(tune_analog);
+        fire_button =
+            button_inputs.just_pressed(GamepadButton::new(gamepad, GamepadButtonType::South));
+    }
+
+    if keyboard.pressed(scancodes::UP) {
         transform.translation.y += move_delta;
-    }
-    if input.pressed(scancodes::DOWN) {
+    } else if keyboard.pressed(scancodes::DOWN) {
         transform.translation.y -= move_delta;
+    } else if let Some(y_value) = analog_y {
+        transform.translation.y += move_delta * y_value;
     }
-    if input.pressed(scancodes::LEFT) {
+
+    if keyboard.pressed(scancodes::LEFT) {
         transform.translation.x += move_delta;
-    }
-    if input.pressed(scancodes::RIGHT) {
+    } else if keyboard.pressed(scancodes::RIGHT) {
         transform.translation.x -= move_delta;
+    } else if let Some(x_value) = analog_x {
+        transform.translation.x += move_delta * x_value;
     }
 
     const PLAYER_BOUNDS: Vec2 = Vec2 { x: 180.0, y: 380.0 };
@@ -113,7 +146,7 @@ pub fn player_movement(
     let extents = PLAYER_BOUNDS.extend(0.0);
     transform.translation = transform.translation.min(extents).max(-extents);
 
-    if input.just_pressed(scancodes::SPACE) {
+    if keyboard.just_pressed(scancodes::SPACE) || fire_button {
         event_sender.send(WeaponFireEvent(entity));
     }
 }
