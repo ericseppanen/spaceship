@@ -18,6 +18,7 @@ mod weapon;
 
 fn main() {
     App::new()
+        .insert_resource(Msaa::Off)
         .add_plugins(
             DefaultPlugins
                 // default_nearest() prevents blurring of pixel art
