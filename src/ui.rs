@@ -89,7 +89,6 @@ fn autohide_text(
             section.style.color.set_a(alpha);
         }
         if autohide.fade.finished() {
-            info!("despawn level text");
             commands.entity(entity).despawn();
         }
     }

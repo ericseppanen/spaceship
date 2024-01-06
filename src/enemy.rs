@@ -51,7 +51,6 @@ impl From<&Level> for EnemySpawner {
             });
 
             if (1 + count) % fighter_cadence == 0 {
-                info!("count {count} fighter_cadence {fighter_cadence} -> spawn fighter");
                 spawn_queue.push_back(Enemy::Fighter {
                     speed: level.enemy_speed,
                 })
@@ -244,7 +243,6 @@ fn enemy_weapons(
     for (mut behavior, entity) in &mut enemies {
         behavior.timer.tick(time.delta());
         if behavior.timer.just_finished() {
-            info!("enemy {entity:?} firing weapon");
             event_sender.send(WeaponFireEvent(entity));
         }
     }
