@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PresentMode;
 
+use crate::background::BgPlugin;
 use crate::collide::CollisionPlugin;
 use crate::enemy::EnemyPlugin;
 use crate::level::LevelPlugin;
@@ -15,6 +16,7 @@ mod player;
 mod scancodes;
 mod ui;
 mod weapon;
+mod background;
 
 fn main() {
     App::new()
@@ -37,6 +39,7 @@ fn main() {
         )
         .add_systems(Startup, setup)
         .add_plugins((
+            BgPlugin,
             PlayerPlugin,
             WeaponsPlugin,
             EnemyPlugin,
