@@ -94,12 +94,16 @@ pub fn player_movement(
     gamepads: Res<Gamepads>,
     button_inputs: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
     // for ScanCode(code) in keyboard.get_pressed() {
     //     info!("scancode {code:#x}");
     // }
+
+    if time.is_paused() {
+        return;
+    }
 
     // We could iterate, but since we're hard-coding the
     // keyboard controls, that wouldn't make sense.

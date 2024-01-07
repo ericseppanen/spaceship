@@ -1,6 +1,8 @@
 use bevy::math::vec3;
 use bevy::prelude::*;
 
+use crate::scancodes;
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -9,7 +11,7 @@ impl Plugin for UiPlugin {
             .insert_resource(Score(0))
             .add_systems(PreStartup, UiAssets::load)
             .add_systems(Startup, create_score)
-            .add_systems(Update, (show_level_text, autohide_text, update_score));
+            .add_systems(Update, (show_level_text, autohide_text, update_score, pause_game));
     }
 }
 
@@ -123,4 +125,14 @@ fn update_score(score: Res<Score>, mut query: Query<&mut Text, With<ScoreText>>)
     let score_string = &mut score_text.sections[0].value;
     score_string.clear();
     write!(score_string, "{:06}", score.0).unwrap();
+}
+
+fn pause_game(mut time: ResMut<Time<Virtual>>, keyboard: Res<Input<ScanCode>>) {
+    if keyboard.just_pressed(scancodes::ESC) {
+        if time.is_paused() {
+            time.unpause();
+        } else {
+            time.pause();
+        }
+    }
 }

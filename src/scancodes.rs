@@ -20,6 +20,8 @@ mod arch {
     pub const RIGHT: ScanCode = ScanCode(0x25);
 
     pub const SPACE: ScanCode = ScanCode(0x20);
+
+    pub const ESC: ScanCode = ScanCode(0x1b);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -37,6 +39,8 @@ mod arch {
     pub const RIGHT: ScanCode = ScanCode(0x69);
 
     pub const SPACE: ScanCode = ScanCode(0x39);
+
+    pub const ESC: ScanCode = ScanCode(0x01);
 }
 
 pub use arch::*;

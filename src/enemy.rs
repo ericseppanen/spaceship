@@ -187,8 +187,12 @@ impl Plugin for EnemyPlugin {
 
 fn enemy_movement(
     mut enemies: Query<(&mut Transform, &mut MovementPattern), With<Enemy>>,
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
 ) {
+    if time.is_paused() {
+        return;
+    }
+
     for (mut transform, mut movement) in &mut enemies {
         match &mut *movement {
             MovementPattern::LeftRight(x_velocity) => {
@@ -236,10 +240,14 @@ fn enemy_movement(
 }
 
 fn enemy_weapons(
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
     mut enemies: Query<(&mut WeaponBehavior, Entity), With<Enemy>>,
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
+    if time.is_paused() {
+        return;
+    }
+
     for (mut behavior, entity) in &mut enemies {
         behavior.timer.tick(time.delta());
         if behavior.timer.just_finished() {
@@ -251,9 +259,13 @@ fn enemy_weapons(
 fn enemy_spawn(
     mut commands: Commands,
     assets: Res<EnemyAssets>,
-    time: Res<Time>,
+    time: Res<Time<Virtual>>,
     mut spawner: ResMut<EnemySpawner>,
 ) {
+    if time.is_paused() {
+        return;
+    }
+
     let enemy;
     // If the timer has expired, reset it if there are still enemies left to spawn.
     if spawner.next_spawn.just_finished() {
@@ -311,7 +323,7 @@ fn enemy_death(
     mut event: EventReader<EnemyDeathEvent>,
     mut spawner: ResMut<EnemySpawner>,
     mut level_end: EventWriter<LevelEndEvent>,
-    mut score: ResMut<Score>
+    mut score: ResMut<Score>,
 ) {
     for _event in event.read() {
         score.0 += 100;
