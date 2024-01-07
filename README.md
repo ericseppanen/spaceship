@@ -13,8 +13,12 @@ It's not sophisticated, but includes the following:
 
 ### Platform support
 
-Only Linux for now. It's set up for the `mold` linker; feel free to delete
+I've only tested on Linux and in a browser using wasm.
+
+The linux build is set up for the `mold` linker; feel free to delete
 `.cargo/config` to get the stock linker.
+
+The webassembly build can be previewed using `wasm-server-runner`; there isn't a proper wrapper page yet.
 
 ### Notes
 
