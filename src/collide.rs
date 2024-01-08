@@ -22,13 +22,17 @@ impl Plugin for CollisionPlugin {
             .add_systems(Startup, CollisionAssets::load)
             .add_systems(
                 Update,
-                (
-                    check_player_collisions,
-                    check_enemy_collisions,
-                    player_death,
-                    enemy_death,
-                    animations,
-                ),
+                (check_player_collisions, check_enemy_collisions, animations),
+            )
+            // Make sure the player death runs in the same frame as the
+            // collision was detected; otherwise the collision could be
+            // detected twice.
+            .add_systems(Update, player_death.after(check_player_collisions))
+            .add_systems(
+                Update,
+                enemy_death
+                    .after(check_player_collisions)
+                    .after(check_enemy_collisions),
             );
     }
 }
@@ -129,6 +133,7 @@ fn check_player_collisions(
         }
     }
 
+    // check for player-enemy collisions
     for (enemy_transform, enemy_entity) in &enemies_query {
         if collide(
             enemy_transform.translation,
