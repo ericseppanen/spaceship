@@ -9,6 +9,7 @@ use crate::player::PlayerPlugin;
 use crate::ui::UiPlugin;
 use crate::weapon::WeaponsPlugin;
 
+mod background;
 mod collide;
 mod enemy;
 mod level;
@@ -16,7 +17,14 @@ mod player;
 mod scancodes;
 mod ui;
 mod weapon;
-mod background;
+
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy, States)]
+enum GameState {
+    #[default]
+    Idle,
+    Playing,
+    Paused,
+}
 
 fn main() {
     App::new()
@@ -37,6 +45,7 @@ fn main() {
                 })
                 .build(),
         )
+        .add_state::<GameState>()
         .add_systems(Startup, setup)
         .add_plugins((
             BgPlugin,

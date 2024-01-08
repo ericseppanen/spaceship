@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use crate::enemy::SpawnerResetEvent;
 use crate::player::PlayerSpawnEvent;
 use crate::ui::ShowLevelEvent;
+use crate::GameState;
 
 #[derive(Debug, Clone)]
 pub struct Level {
@@ -59,7 +60,10 @@ impl Plugin for LevelPlugin {
         app.insert_resource(CurrentLevel::default())
             .add_event::<LevelEndEvent>()
             .add_event::<LevelRestartEvent>()
-            .add_systems(Update, (level_start, detect_player_death, bump_level));
+            .add_systems(
+                Update,
+                (level_start, detect_player_death, bump_level).run_if(in_state(GameState::Playing)),
+            );
     }
 }
 

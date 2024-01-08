@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use crate::enemy::Enemy;
 use crate::level::LevelRestartEvent;
 use crate::player::Player;
+use crate::ui::{GameOverEvent, PlayerLives};
 use crate::weapon::Projectile;
 
 // FIXME: these hitboxes kind of suck.
@@ -195,6 +196,8 @@ fn player_death(
     query: Query<&Transform>,
     assets: Res<CollisionAssets>,
     mut level_reset: EventWriter<LevelRestartEvent>,
+    mut game_over: EventWriter<GameOverEvent>,
+    mut lives: ResMut<PlayerLives>,
 ) {
     // Consume all events (which should be equivalent), keeping the last.
     if let Some(event) = event.read().last() {
@@ -206,6 +209,12 @@ fn player_death(
             entity.despawn();
         };
         commands.spawn(assets.player_death_audio());
+        **lives = lives.checked_sub(1).unwrap();
+        if **lives == 0 {
+            game_over.send(GameOverEvent);
+        }
+        // LevelRestartEvent despawns all the enemies, so
+        // we should do this even if the game is over.
         level_reset.send(LevelRestartEvent);
     }
 }

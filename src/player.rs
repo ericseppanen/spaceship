@@ -1,8 +1,8 @@
 use bevy::math::vec2;
 use bevy::prelude::*;
 
-use crate::scancodes;
 use crate::weapon::{Weapon, WeaponFireEvent};
+use crate::{scancodes, GameState};
 
 const PLAYER_SPEED: f32 = 200.0;
 const PLAYER_PROJECTILE_VELOCITY: f32 = 400.0;
@@ -72,7 +72,10 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PlayerSpawnEvent>()
             .add_systems(Startup, PlayerAssets::load)
-            .add_systems(Update, (spawn_player, player_movement));
+            .add_systems(
+                Update,
+                (spawn_player, player_movement).run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
@@ -100,10 +103,6 @@ pub fn player_movement(
     // for ScanCode(code) in keyboard.get_pressed() {
     //     info!("scancode {code:#x}");
     // }
-
-    if time.is_paused() {
-        return;
-    }
 
     // We could iterate, but since we're hard-coding the
     // keyboard controls, that wouldn't make sense.

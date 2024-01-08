@@ -7,6 +7,7 @@ use crate::collide::EnemyDeathEvent;
 use crate::level::{Level, LevelEndEvent, LevelRestartEvent};
 use crate::ui::Score;
 use crate::weapon::{Weapon, WeaponFireEvent};
+use crate::GameState;
 
 const ENEMY_PROJECTILE_VELOCITY: f32 = 400.0;
 
@@ -180,7 +181,8 @@ impl Plugin for EnemyPlugin {
                     level_restart_despawn,
                     reset_spawner,
                     enemy_death,
-                ),
+                )
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -189,10 +191,6 @@ fn enemy_movement(
     mut enemies: Query<(&mut Transform, &mut MovementPattern), With<Enemy>>,
     time: Res<Time<Virtual>>,
 ) {
-    if time.is_paused() {
-        return;
-    }
-
     for (mut transform, mut movement) in &mut enemies {
         match &mut *movement {
             MovementPattern::LeftRight(x_velocity) => {
@@ -244,10 +242,6 @@ fn enemy_weapons(
     mut enemies: Query<(&mut WeaponBehavior, Entity), With<Enemy>>,
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
-    if time.is_paused() {
-        return;
-    }
-
     for (mut behavior, entity) in &mut enemies {
         behavior.timer.tick(time.delta());
         if behavior.timer.just_finished() {
@@ -262,10 +256,6 @@ fn enemy_spawn(
     time: Res<Time<Virtual>>,
     mut spawner: ResMut<EnemySpawner>,
 ) {
-    if time.is_paused() {
-        return;
-    }
-
     let enemy;
     // If the timer has expired, reset it if there are still enemies left to spawn.
     if spawner.next_spawn.just_finished() {
