@@ -12,3 +12,4 @@ opt-level = 3
 [dependencies]
 bevy = { version = "0.12.1", features = ["wav"] }
 fastrand = "2.0.1"
+winit = { version = "0.28.7", default-features = false }

@@ -2,6 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use bevy::math::vec3;
 use bevy::prelude::*;
+use bevy::winit::WinitWindows;
 
 use crate::level::CurrentLevel;
 use crate::{scancodes, GameState};
@@ -12,10 +13,15 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ShowLevelEvent>()
             .add_event::<GameOverEvent>()
+            .add_state::<IconState>()
             .insert_resource(Score::default())
             .insert_resource(PlayerLives::default())
             .add_systems(PreStartup, UiAssets::load)
             .add_systems(Startup, (create_score, create_intro_text))
+            .add_systems(
+                Update,
+                set_window_icon.run_if(in_state(IconState::NotLoaded)),
+            )
             .add_systems(Update, start_game.run_if(in_state(GameState::Idle)))
             .add_systems(
                 Update,
@@ -246,4 +252,38 @@ fn game_over(
     create_gameover_text(assets, commands);
 
     next_state.set(GameState::Idle);
+}
+
+/// Tracks whether we set the window icon.
+#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy, States)]
+enum IconState {
+    #[default]
+    NotLoaded,
+    Loaded,
+}
+
+fn set_window_icon(
+    windows: NonSend<WinitWindows>,
+    asset_server: Res<AssetServer>,
+    images: Res<Assets<Image>>,
+    mut next_state: ResMut<NextState<IconState>>,
+) {
+    use winit::window::Icon;
+
+    let player_ship_image: Handle<Image> = asset_server.load("red_ship.png");
+    let Some(image) = images.get(&player_ship_image) else {
+        return;
+    };
+    let size = image.texture_descriptor.size;
+    let width = size.width;
+    let height = size.height;
+
+    let icon = Icon::from_rgba(image.data.clone(), width, height).unwrap();
+
+    // do it for all windows
+    for window in windows.windows.values() {
+        window.set_window_icon(Some(icon.clone()));
+    }
+    info!("loaded icon");
+    next_state.set(IconState::Loaded);
 }
