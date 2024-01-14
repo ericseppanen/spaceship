@@ -99,14 +99,14 @@ fn detect_player_death(
     mut current_level: ResMut<CurrentLevel>,
     mut event: EventReader<LevelRestartEvent>,
 ) {
-    if let Some(_) = event.read().last() {
+    if event.read().last().is_some() {
         current_level.level_start_timer.reset();
     };
 }
 
 /// If the player completed the level, load the next one.
 fn bump_level(mut current_level: ResMut<CurrentLevel>, mut event: EventReader<LevelEndEvent>) {
-    if let Some(_) = event.read().last() {
+    if event.read().last().is_some() {
         let level_number = current_level.number + 1;
         let level_index = min(level_number, LEVELS.len() - 1);
         let mut level = LEVELS[level_index].clone();

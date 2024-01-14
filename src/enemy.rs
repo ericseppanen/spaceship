@@ -201,10 +201,8 @@ fn enemy_movement(
                     if transform.translation.x > 200.0 {
                         *x_velocity = -*x_velocity;
                     }
-                } else {
-                    if transform.translation.x < -200.0 {
-                        *x_velocity = -*x_velocity;
-                    }
+                } else if transform.translation.x < -200.0 {
+                    *x_velocity = -*x_velocity;
                 }
             }
             MovementPattern::Zigzag(velocity) => {
@@ -216,10 +214,8 @@ fn enemy_movement(
                     if transform.translation.x > 200.0 {
                         velocity.x = -velocity.x;
                     }
-                } else {
-                    if transform.translation.x < -200.0 {
-                        velocity.x = -velocity.x;
-                    }
+                } else if transform.translation.x < -200.0 {
+                    velocity.x = -velocity.x;
                 }
 
                 // vertical bounce
@@ -227,10 +223,8 @@ fn enemy_movement(
                     if transform.translation.y > 400.0 {
                         velocity.y = -velocity.y;
                     }
-                } else {
-                    if transform.translation.y < -400.0 {
-                        velocity.y = -velocity.y;
-                    }
+                } else if transform.translation.y < -400.0 {
+                    velocity.y = -velocity.y;
                 }
             }
         }

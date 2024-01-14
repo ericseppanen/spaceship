@@ -97,6 +97,6 @@ fn window_resize(mut resize_reader: EventReader<WindowResized>, mut query: Query
         };
 
         viewport.physical_size = physical_size.into();
-        viewport.physical_position = physical_position.into();
+        viewport.physical_position = physical_position;
     }
 }

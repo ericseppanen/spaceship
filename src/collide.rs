@@ -258,7 +258,7 @@ impl DeathAnimation {
     fn to_bundle(self, transform: &Transform, assets: &CollisionAssets) -> (Self, SpriteBundle) {
         let sprite = SpriteBundle {
             texture: assets.death_animation[0].clone_weak(),
-            transform: transform.clone(),
+            transform: *transform,
             ..default()
         };
         (self, sprite)
