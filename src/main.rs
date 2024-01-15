@@ -1,3 +1,4 @@
+use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::render::camera::{ScalingMode, Viewport};
 use bevy::window::{PresentMode, WindowResized, WindowResolution};
@@ -29,6 +30,7 @@ enum GameState {
 
 fn main() {
     App::new()
+        .insert_resource(AssetMetaCheck::Never)
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::hex("010101").unwrap()))
         .add_plugins(
@@ -37,6 +39,7 @@ fn main() {
                 .set(ImagePlugin::default_linear())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
+                        canvas: Some("#spaceship-canvas".into()),
                         title: "Spaceship!".into(),
                         resolution: WindowResolution::new(400.0, 800.0),
                         present_mode: PresentMode::AutoNoVsync,

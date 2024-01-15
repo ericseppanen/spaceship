@@ -7,6 +7,7 @@ use crate::level::LevelRestartEvent;
 use crate::player::Player;
 use crate::ui::{GameOverEvent, PlayerLives};
 use crate::weapon::Projectile;
+use crate::GameState;
 
 // FIXME: these hitboxes kind of suck.
 // The players and enemies are triangular, and these are rectangles.
@@ -23,17 +24,24 @@ impl Plugin for CollisionPlugin {
             .add_systems(Startup, CollisionAssets::load)
             .add_systems(
                 Update,
-                (check_player_collisions, check_enemy_collisions, animations),
+                (check_player_collisions, check_enemy_collisions, animations)
+                    .run_if(in_state(GameState::Playing)),
             )
             // Make sure the player death runs in the same frame as the
             // collision was detected; otherwise the collision could be
             // detected twice.
-            .add_systems(Update, player_death.after(check_player_collisions))
+            .add_systems(
+                Update,
+                player_death
+                    .after(check_player_collisions)
+                    .run_if(in_state(GameState::Playing)),
+            )
             .add_systems(
                 Update,
                 enemy_death
                     .after(check_player_collisions)
-                    .after(check_enemy_collisions),
+                    .after(check_enemy_collisions)
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
