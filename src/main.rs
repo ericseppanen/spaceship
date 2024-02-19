@@ -28,6 +28,11 @@ enum GameState {
 }
 
 fn main() {
+    // Allow a canvas name to be specified on the commandline,
+    // for compatibility with trunk.
+    let canvas = option_env!("canvas_name").map(ToOwned::to_owned);
+    dbg!(&canvas);
+
     App::new()
         .insert_resource(AssetMetaCheck::Never)
         .insert_resource(Msaa::Off)
@@ -38,7 +43,7 @@ fn main() {
                 .set(ImagePlugin::default_linear())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        canvas: Some("#spaceship-canvas".into()),
+                        canvas,
                         title: "Spaceship!".into(),
                         resolution: WindowResolution::new(400.0, 800.0),
                         present_mode: PresentMode::AutoNoVsync,
