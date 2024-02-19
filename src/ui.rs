@@ -212,6 +212,8 @@ fn pause_game(
 }
 
 fn start_game(
+    gamepads: Res<Gamepads>,
+    button_inputs: Res<ButtonInput<GamepadButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut lives: ResMut<PlayerLives>,
@@ -220,7 +222,13 @@ fn start_game(
     start_text: Query<Entity, With<InterstitialText>>,
     mut commands: Commands,
 ) {
-    if keyboard.just_pressed(KeyCode::Space) {
+    let mut fire_pressed = keyboard.just_pressed(KeyCode::Space);
+    if let Some(gamepad) = gamepads.iter().next() {
+        fire_pressed |=
+            button_inputs.just_pressed(GamepadButton::new(gamepad, GamepadButtonType::South));
+    }
+
+    if fire_pressed {
         info!("start game");
         next_state.set(GameState::Playing);
         lives.0 = 3;
