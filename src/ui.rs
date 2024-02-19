@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::winit::WinitWindows;
 
 use crate::level::CurrentLevel;
-use crate::{scancodes, GameState};
+use crate::GameState;
 
 pub struct UiPlugin;
 
@@ -13,7 +13,7 @@ impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<ShowLevelEvent>()
             .add_event::<GameOverEvent>()
-            .add_state::<IconState>()
+            .init_state::<IconState>()
             .insert_resource(Score::default())
             .insert_resource(PlayerLives::default())
             .add_systems(PreStartup, UiAssets::load)
@@ -107,7 +107,7 @@ fn create_interstitial_text(text: &str, assets: Res<UiAssets>, mut commands: Com
                     ..default()
                 },
             )
-            .with_alignment(TextAlignment::Center),
+            .with_justify(JustifyText::Center),
             ..default()
         },
         InterstitialText,
@@ -136,7 +136,7 @@ fn show_level_text(
                     ..default()
                 },
             )
-            .with_alignment(TextAlignment::Center),
+            .with_justify(JustifyText::Center),
             ..default()
         },
         AutoHide::default(),
@@ -151,7 +151,7 @@ fn autohide_text(
 ) {
     for (mut text, mut autohide, entity) in &mut query {
         autohide.fade.tick(time.delta());
-        let alpha = 2.0 * autohide.fade.percent_left();
+        let alpha = 2.0 * autohide.fade.fraction_remaining();
         if alpha > 1.0 {
             return;
         }
@@ -178,7 +178,7 @@ fn create_score(assets: Res<UiAssets>, mut commands: Commands) {
                     ..default()
                 },
             )
-            .with_alignment(TextAlignment::Center),
+            .with_justify(JustifyText::Center),
             transform: Transform::from_translation(vec3(150.0, 380.0, -1.0)),
             ..default()
         },
@@ -197,10 +197,10 @@ fn update_score(score: Res<Score>, mut query: Query<&mut Text, With<ScoreText>>)
 
 fn pause_game(
     mut time: ResMut<Time<Virtual>>,
-    keyboard: Res<Input<ScanCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    if keyboard.just_pressed(scancodes::ESC) {
+    if keyboard.just_pressed(KeyCode::Escape) {
         if time.is_paused() {
             time.unpause();
             next_state.set(GameState::Playing);
@@ -212,7 +212,7 @@ fn pause_game(
 }
 
 fn start_game(
-    keyboard: Res<Input<ScanCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut lives: ResMut<PlayerLives>,
     mut score: ResMut<Score>,
@@ -220,7 +220,7 @@ fn start_game(
     start_text: Query<Entity, With<InterstitialText>>,
     mut commands: Commands,
 ) {
-    if keyboard.just_pressed(scancodes::SPACE) {
+    if keyboard.just_pressed(KeyCode::Space) {
         info!("start game");
         next_state.set(GameState::Playing);
         lives.0 = 3;

@@ -16,7 +16,6 @@ mod collide;
 mod enemy;
 mod level;
 mod player;
-mod scancodes;
 mod ui;
 mod weapon;
 
@@ -50,7 +49,7 @@ fn main() {
                 })
                 .build(),
         )
-        .add_state::<GameState>()
+        .init_state::<GameState>()
         .add_systems(Startup, setup)
         .add_systems(Update, window_resize)
         .add_plugins((

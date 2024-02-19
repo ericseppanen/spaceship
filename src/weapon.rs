@@ -1,4 +1,4 @@
-use bevy::audio::{PlaybackMode, Volume, VolumeLevel};
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 
 use crate::player::{player_movement, Player};
@@ -40,7 +40,7 @@ impl WeaponAssets {
             source: self.player_weapon_sound.clone_weak(),
             settings: PlaybackSettings {
                 mode: PlaybackMode::Despawn,
-                volume: Volume::Relative(VolumeLevel::new(0.2)),
+                volume: Volume::new(0.2),
                 ..default()
             },
         }

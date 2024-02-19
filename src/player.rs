@@ -2,7 +2,7 @@ use bevy::math::vec2;
 use bevy::prelude::*;
 
 use crate::weapon::{Weapon, WeaponFireEvent};
-use crate::{scancodes, GameState};
+use crate::GameState;
 
 const PLAYER_SPEED: f32 = 200.0;
 const PLAYER_PROJECTILE_VELOCITY: f32 = 400.0;
@@ -93,9 +93,9 @@ fn tune_analog(input: f32) -> f32 {
 
 pub fn player_movement(
     mut players: Query<(&mut Transform, &Player, Entity)>,
-    keyboard: Res<Input<ScanCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     gamepads: Res<Gamepads>,
-    button_inputs: Res<Input<GamepadButton>>,
+    button_inputs: Res<ButtonInput<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     time: Res<Time<Virtual>>,
     mut event_sender: EventWriter<WeaponFireEvent>,
@@ -127,18 +127,18 @@ pub fn player_movement(
             button_inputs.just_pressed(GamepadButton::new(gamepad, GamepadButtonType::South));
     }
 
-    if keyboard.pressed(scancodes::UP) {
+    if keyboard.pressed(KeyCode::ArrowUp) {
         transform.translation.y += move_delta;
-    } else if keyboard.pressed(scancodes::DOWN) {
+    } else if keyboard.pressed(KeyCode::ArrowDown) {
         transform.translation.y -= move_delta;
     } else if let Some(y_value) = analog_y {
         transform.translation.y += move_delta * y_value;
     }
 
-    if keyboard.pressed(scancodes::LEFT) {
-        transform.translation.x += move_delta;
-    } else if keyboard.pressed(scancodes::RIGHT) {
+    if keyboard.pressed(KeyCode::ArrowLeft) {
         transform.translation.x -= move_delta;
+    } else if keyboard.pressed(KeyCode::ArrowRight) {
+        transform.translation.x += move_delta;
     } else if let Some(x_value) = analog_x {
         transform.translation.x += move_delta * x_value;
     }
@@ -149,7 +149,7 @@ pub fn player_movement(
     let extents = PLAYER_BOUNDS.extend(0.0);
     transform.translation = transform.translation.min(extents).max(-extents);
 
-    if keyboard.just_pressed(scancodes::SPACE) || fire_button {
+    if keyboard.just_pressed(KeyCode::Space) || fire_button {
         event_sender.send(WeaponFireEvent(entity));
     }
 }

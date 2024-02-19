@@ -10,6 +10,6 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = { version = "0.12.1", features = ["wav"] }
+bevy = { version = "0.13.0", features = ["wav"] }
 fastrand = "2.0.1"
-winit = { version = "0.28.7", default-features = false }
+winit = { version = "0.29.10", default-features = false }

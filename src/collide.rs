@@ -1,4 +1,5 @@
-use bevy::audio::{PlaybackMode, Volume, VolumeLevel};
+use bevy::audio::{PlaybackMode, Volume};
+use bevy::math::bounding::{Aabb2d, IntersectsVolume};
 use bevy::math::vec2;
 use bevy::prelude::*;
 
@@ -11,9 +12,9 @@ use crate::GameState;
 
 // FIXME: these hitboxes kind of suck.
 // The players and enemies are triangular, and these are rectangles.
-const PLAYER_HITBOX: Vec2 = vec2(30.0, 25.0);
-const ENEMY_HITBOX: Vec2 = vec2(30.0, 25.0);
-const PROJECTILE_HITBOX: Vec2 = vec2(2.0, 4.0);
+const PLAYER_HITBOX: Vec2 = vec2(15.0, 12.5);
+const ENEMY_HITBOX: Vec2 = vec2(15.0, 12.5);
+const PROJECTILE_HITBOX: Vec2 = vec2(1.0, 2.0);
 
 pub struct CollisionPlugin;
 
@@ -87,7 +88,7 @@ impl CollisionAssets {
             source: self.player_death_sound.clone_weak(),
             settings: PlaybackSettings {
                 mode: PlaybackMode::Despawn,
-                volume: Volume::Relative(VolumeLevel::new(0.6)),
+                volume: Volume::new(0.6),
                 ..default()
             },
         }
@@ -118,8 +119,6 @@ fn check_player_collisions(
     mut player_death_sender: EventWriter<PlayerDeathEvent>,
     mut enemy_death_sender: EventWriter<EnemyDeathEvent>,
 ) {
-    use bevy::sprite::collide_aabb::collide;
-
     let Ok((player_transform, player_entity)) = player_query.get_single() else {
         return;
     };
@@ -129,14 +128,13 @@ fn check_player_collisions(
         if projectile.player {
             continue;
         }
-        if collide(
-            projectile_transform.translation,
+
+        let projectile_box = Aabb2d::new(
+            projectile_transform.translation.truncate(),
             PROJECTILE_HITBOX,
-            player_transform.translation,
-            PLAYER_HITBOX,
-        )
-        .is_some()
-        {
+        );
+        let player_box = Aabb2d::new(player_transform.translation.truncate(), PLAYER_HITBOX);
+        if projectile_box.intersects(&player_box) {
             player_death_sender.send(PlayerDeathEvent(player_entity));
             commands.entity(proj_entity).despawn();
         }
@@ -144,14 +142,9 @@ fn check_player_collisions(
 
     // check for player-enemy collisions
     for (enemy_transform, enemy_entity) in &enemies_query {
-        if collide(
-            enemy_transform.translation,
-            ENEMY_HITBOX,
-            player_transform.translation,
-            PLAYER_HITBOX,
-        )
-        .is_some()
-        {
+        let enemy_box = Aabb2d::new(enemy_transform.translation.truncate(), ENEMY_HITBOX);
+        let player_box = Aabb2d::new(player_transform.translation.truncate(), PLAYER_HITBOX);
+        if enemy_box.intersects(&player_box) {
             player_death_sender.send(PlayerDeathEvent(player_entity));
             enemy_death_sender.send(EnemyDeathEvent(enemy_entity));
         }
@@ -176,20 +169,16 @@ fn check_enemy_collisions(
 ) {
     for (enemy_transform, enemy_entity) in &enemies_query {
         for (projectile_transform, projectile, proj_entity) in &projectiles_query {
-            use bevy::sprite::collide_aabb::collide;
-
             if !projectile.player {
                 continue;
             }
-            if collide(
-                projectile_transform.translation,
-                // FIXME: how do I track the projectile size?
+
+            let projectile_box = Aabb2d::new(
+                projectile_transform.translation.truncate(),
                 PROJECTILE_HITBOX,
-                enemy_transform.translation,
-                ENEMY_HITBOX,
-            )
-            .is_some()
-            {
+            );
+            let enemy_box = Aabb2d::new(enemy_transform.translation.truncate(), ENEMY_HITBOX);
+            if projectile_box.intersects(&enemy_box) {
                 enemy_death_sender.send(EnemyDeathEvent(enemy_entity));
                 commands.entity(proj_entity).despawn();
             }
