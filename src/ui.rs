@@ -156,7 +156,7 @@ fn autohide_text(
             return;
         }
         for section in &mut text.sections {
-            section.style.color.set_a(alpha);
+            section.style.color.set_alpha(alpha);
         }
         if autohide.fade.finished() {
             commands.entity(entity).despawn();
