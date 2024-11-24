@@ -200,7 +200,7 @@ fn player_death(
     if let Some(event) = event.read().last() {
         info!("player died");
         if let Ok(transform) = query.get(event.0) {
-            commands.spawn(DeathAnimation::default().to_bundle(transform, &assets));
+            commands.spawn(DeathAnimation::default().into_bundle(transform, &assets));
         }
         if let Some(mut entity) = commands.get_entity(event.0) {
             entity.despawn();
@@ -226,7 +226,7 @@ fn enemy_death(
     for event in event.read() {
         info!("enemy {:?} died", event.0);
         if let Ok(transform) = query.get(event.0) {
-            commands.spawn(DeathAnimation::default().to_bundle(transform, &assets));
+            commands.spawn(DeathAnimation::default().into_bundle(transform, &assets));
         }
         if let Some(mut entity) = commands.get_entity(event.0) {
             entity.despawn();
@@ -252,7 +252,7 @@ impl Default for DeathAnimation {
 }
 
 impl DeathAnimation {
-    fn to_bundle(self, transform: &Transform, assets: &CollisionAssets) -> (Self, SpriteBundle) {
+    fn into_bundle(self, transform: &Transform, assets: &CollisionAssets) -> (Self, SpriteBundle) {
         let sprite = SpriteBundle {
             texture: assets.death_animation[0].clone_weak(),
             transform: *transform,
