@@ -1,3 +1,4 @@
+use bevy::asset::AssetMetaCheck;
 use bevy::prelude::*;
 use bevy::render::camera::{ScalingMode, Viewport};
 use bevy::window::{PresentMode, WindowResized, WindowResolution};
@@ -33,11 +34,15 @@ fn main() {
     dbg!(&canvas);
 
     App::new()
-        //.insert_resource(AssetMetaCheck::Never) // FIXME: I don't remember what this is
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::srgb_u8(1, 1, 1)))
         .add_plugins(
             DefaultPlugins
+                // Prevent asset .meta loading errors on web.
+                .set(AssetPlugin {
+                    meta_check: AssetMetaCheck::Never,
+                    ..default()
+                })
                 // default_nearest() prevents blurring of pixel art
                 .set(ImagePlugin::default_linear())
                 .set(WindowPlugin {
