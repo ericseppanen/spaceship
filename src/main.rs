@@ -28,11 +28,6 @@ enum GameState {
 }
 
 fn main() {
-    // Allow a canvas name to be specified on the commandline,
-    // for compatibility with trunk.
-    let canvas = option_env!("canvas_name").map(ToOwned::to_owned);
-    dbg!(&canvas);
-
     App::new()
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::srgb_u8(1, 1, 1)))
@@ -47,7 +42,8 @@ fn main() {
                 .set(ImagePlugin::default_linear())
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        canvas,
+                        #[cfg(target_family = "wasm")]
+                        canvas: Some("#spaceship-canvas".into()),
                         title: "Spaceship!".into(),
                         resolution: WindowResolution::new(400.0, 800.0),
                         present_mode: PresentMode::AutoNoVsync,

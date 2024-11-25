@@ -3,3 +3,12 @@
     display: flex;
     justify-content: center;
 }
+
+body {
+    background-color: black;
+}
+
+canvas {
+    outline: none;
+    border: none;
+}
