@@ -10,7 +10,7 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = { version = "0.14.2", default-features = false, features = ["bevy_asset", "bevy_color", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "bevy_winit", "png", "wav", "webgl2"] }
+bevy = { version = "0.15.0", default-features = false, features = ["bevy_asset", "bevy_color", "bevy_render", "bevy_sprite", "bevy_state", "bevy_text", "bevy_ui", "bevy_window", "bevy_winit", "custom_cursor", "png", "wav", "webgl2"] }
 fastrand = "2.0.1"
 winit = { version = "0.30.5", default-features = false }
 

@@ -91,14 +91,15 @@ impl WeaponBehavior {}
 pub struct EnemyBundle {
     enemy: Enemy,
     movement: MovementPattern,
-    sprite: SpriteBundle,
+    sprite: Sprite,
+    transform: Transform,
     weapon: Option<Weapon>,
     weapon_behavior: Option<WeaponBehavior>,
 }
 
 impl EnemyBundle {
     fn spawn(self, commands: &mut Commands) {
-        let mut commands = commands.spawn((self.enemy, self.movement, self.sprite));
+        let mut commands = commands.spawn((self.enemy, self.movement, self.sprite, self.transform));
         if let Some(weapon) = self.weapon {
             commands.insert(weapon);
         }
@@ -121,7 +122,7 @@ impl Enemy {
             }
         };
 
-        let texture = match &self {
+        let image = match &self {
             Enemy::Scout { .. } => assets.scout_image.clone_weak(),
             Enemy::Fighter { .. } => assets.fighter_image.clone_weak(),
         };
@@ -136,12 +137,7 @@ impl Enemy {
         let transform = Transform::from_translation(spawn_point.extend(0.0));
         let sprite = Sprite {
             flip_y: true,
-            ..default()
-        };
-        let sprite = SpriteBundle {
-            sprite,
-            texture,
-            transform,
+            image,
             ..default()
         };
 
@@ -159,6 +155,7 @@ impl Enemy {
             enemy: self,
             movement,
             sprite,
+            transform,
             weapon,
             weapon_behavior,
         }
@@ -194,7 +191,7 @@ fn enemy_movement(
     for (mut transform, mut movement) in &mut enemies {
         match &mut *movement {
             MovementPattern::LeftRight(x_velocity) => {
-                let move_x = *x_velocity * time.delta_seconds();
+                let move_x = *x_velocity * time.delta_secs();
                 transform.translation.x += move_x;
 
                 if *x_velocity > 0.0 {
@@ -206,7 +203,7 @@ fn enemy_movement(
                 }
             }
             MovementPattern::Zigzag(velocity) => {
-                let move_vec = *velocity * time.delta_seconds();
+                let move_vec = *velocity * time.delta_secs();
                 transform.translation += move_vec.extend(0.0);
 
                 // horizontal bounce

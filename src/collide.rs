@@ -75,23 +75,23 @@ impl CollisionAssets {
     }
 
     /// Create a bundle to play the enemy death audio.
-    fn enemy_death_audio(&self) -> AudioBundle {
-        AudioBundle {
-            source: self.enemy_death_sound.clone_weak(),
-            settings: PlaybackSettings::DESPAWN,
-        }
+    fn enemy_death_audio(&self, commands: &mut Commands) {
+        commands.spawn((
+            AudioPlayer(self.enemy_death_sound.clone_weak()),
+            PlaybackSettings::DESPAWN,
+        ));
     }
 
     /// Create a bundle to play the player death audio.
-    fn player_death_audio(&self) -> AudioBundle {
-        AudioBundle {
-            source: self.player_death_sound.clone_weak(),
-            settings: PlaybackSettings {
+    fn player_death_audio(&self, commands: &mut Commands) {
+        commands.spawn((
+            AudioPlayer(self.player_death_sound.clone_weak()),
+            PlaybackSettings {
                 mode: PlaybackMode::Despawn,
                 volume: Volume::new(0.6),
                 ..default()
             },
-        }
+        ));
     }
 }
 
@@ -205,7 +205,8 @@ fn player_death(
         if let Some(mut entity) = commands.get_entity(event.0) {
             entity.despawn();
         };
-        commands.spawn(assets.player_death_audio());
+
+        assets.player_death_audio(&mut commands);
         **lives = lives.checked_sub(1).unwrap();
         if **lives == 0 {
             game_over.send(GameOverEvent);
@@ -232,7 +233,7 @@ fn enemy_death(
             entity.despawn();
         };
         // FIXME: if the player also died, should we suppress this audio?
-        commands.spawn(assets.enemy_death_audio());
+        assets.enemy_death_audio(&mut commands);
     }
 }
 
@@ -252,13 +253,13 @@ impl Default for DeathAnimation {
 }
 
 impl DeathAnimation {
-    fn into_bundle(self, transform: &Transform, assets: &CollisionAssets) -> (Self, SpriteBundle) {
-        let sprite = SpriteBundle {
-            texture: assets.death_animation[0].clone_weak(),
-            transform: *transform,
-            ..default()
-        };
-        (self, sprite)
+    fn into_bundle(
+        self,
+        transform: &Transform,
+        assets: &CollisionAssets,
+    ) -> (Self, Sprite, Transform) {
+        let sprite = Sprite::from_image(assets.death_animation[0].clone_weak());
+        (self, sprite, *transform)
     }
 }
 
@@ -267,17 +268,17 @@ impl DeathAnimation {
 /// The entity will be despawned when the animation completes.
 fn animations(
     mut commands: Commands,
-    mut animation_query: Query<(&mut Handle<Image>, &mut DeathAnimation, Entity)>,
+    mut animation_query: Query<(&mut Sprite, &mut DeathAnimation, Entity)>,
     assets: Res<CollisionAssets>,
     time: Res<Time>,
 ) {
-    for (mut sprite_image, mut animation, entity) in &mut animation_query {
+    for (mut sprite, mut animation, entity) in &mut animation_query {
         animation.timer.tick(time.delta());
         if animation.timer.just_finished() {
             animation.index += 1;
             match assets.death_animation.get(animation.index) {
                 Some(handle) => {
-                    *sprite_image = handle.clone_weak();
+                    sprite.image = handle.clone_weak();
                 }
                 None => {
                     // end of animation.

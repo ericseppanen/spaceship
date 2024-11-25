@@ -98,18 +98,13 @@ fn create_gameover_text(assets: Res<UiAssets>, commands: Commands) {
 
 fn create_interstitial_text(text: &str, assets: Res<UiAssets>, mut commands: Commands) {
     commands.spawn((
-        Text2dBundle {
-            text: Text::from_section(
-                text,
-                TextStyle {
-                    font: assets.font.clone_weak(),
-                    font_size: 20.0,
-                    ..default()
-                },
-            )
-            .with_justify(JustifyText::Center),
+        Text2d::new(text),
+        TextFont {
+            font: assets.font.clone_weak(),
+            font_size: 20.0,
             ..default()
         },
+        TextLayout::new_with_justify(JustifyText::Center),
         InterstitialText,
     ));
 }
@@ -127,18 +122,13 @@ fn show_level_text(
     };
 
     commands.spawn((
-        Text2dBundle {
-            text: Text::from_section(
-                level_text,
-                TextStyle {
-                    font: assets.font.clone_weak(),
-                    font_size: 20.0,
-                    ..default()
-                },
-            )
-            .with_justify(JustifyText::Center),
+        Text2d::new(level_text),
+        TextFont {
+            font: assets.font.clone_weak(),
+            font_size: 20.0,
             ..default()
         },
+        TextLayout::new_with_justify(JustifyText::Center),
         AutoHide::default(),
         LevelText,
     ));
@@ -146,18 +136,18 @@ fn show_level_text(
 
 fn autohide_text(
     time: Res<Time>,
-    mut query: Query<(&mut Text, &mut AutoHide, Entity)>,
+    mut query: Query<(&mut TextColor, &mut AutoHide, Entity)>,
     mut commands: Commands,
 ) {
-    for (mut text, mut autohide, entity) in &mut query {
+    for (mut text_color, mut autohide, entity) in &mut query {
         autohide.fade.tick(time.delta());
         let alpha = 2.0 * autohide.fade.fraction_remaining();
         if alpha > 1.0 {
             return;
         }
-        for section in &mut text.sections {
-            section.style.color.set_alpha(alpha);
-        }
+
+        text_color.0.set_alpha(alpha);
+
         if autohide.fade.finished() {
             commands.entity(entity).despawn();
         }
@@ -169,28 +159,23 @@ pub struct Score(pub u32);
 
 fn create_score(assets: Res<UiAssets>, mut commands: Commands) {
     commands.spawn((
-        Text2dBundle {
-            text: Text::from_section(
-                "------",
-                TextStyle {
-                    font: assets.font.clone_weak(),
-                    font_size: 20.0,
-                    ..default()
-                },
-            )
-            .with_justify(JustifyText::Center),
-            transform: Transform::from_translation(vec3(150.0, 380.0, -1.0)),
+        Text2d::new("------"),
+        TextFont {
+            font: assets.font.clone_weak(),
+            font_size: 20.0,
             ..default()
         },
+        TextLayout::new_with_justify(JustifyText::Center),
+        Transform::from_translation(vec3(100.0, 380.0, -1.0)),
         ScoreText,
     ));
 }
 
-fn update_score(score: Res<Score>, mut query: Query<&mut Text, With<ScoreText>>) {
+fn update_score(score: Res<Score>, mut query: Query<&mut Text2d, With<ScoreText>>) {
     use std::fmt::Write;
 
     let mut score_text = query.single_mut();
-    let score_string = &mut score_text.sections[0].value;
+    let score_string = &mut score_text.0;
     score_string.clear();
     write!(score_string, "{:06}", score.0).unwrap();
 }
@@ -211,9 +196,9 @@ fn pause_game(
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 fn start_game(
-    gamepads: Res<Gamepads>,
-    button_inputs: Res<ButtonInput<GamepadButton>>,
+    gamepads: Query<&Gamepad>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut lives: ResMut<PlayerLives>,
@@ -224,8 +209,7 @@ fn start_game(
 ) {
     let mut fire_pressed = keyboard.just_pressed(KeyCode::Space);
     if let Some(gamepad) = gamepads.iter().next() {
-        fire_pressed |=
-            button_inputs.just_pressed(GamepadButton::new(gamepad, GamepadButtonType::South));
+        fire_pressed |= gamepad.digital().just_pressed(GamepadButton::South);
     }
 
     if fire_pressed {

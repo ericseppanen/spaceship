@@ -35,15 +35,15 @@ impl WeaponAssets {
     }
 
     /// Create an AudioBundle that will play the weapon sound.
-    fn weapon_audio(&self) -> AudioBundle {
-        AudioBundle {
-            source: self.player_weapon_sound.clone_weak(),
-            settings: PlaybackSettings {
+    fn weapon_audio(&self, commands: &mut Commands) {
+        commands.spawn((
+            AudioPlayer(self.player_weapon_sound.clone_weak()),
+            PlaybackSettings {
                 mode: PlaybackMode::Despawn,
                 volume: Volume::new(0.2),
                 ..default()
             },
-        }
+        ));
     }
 }
 
@@ -57,7 +57,8 @@ pub struct Projectile {
 #[derive(Bundle)]
 pub struct ProjectileBundle {
     projectile: Projectile,
-    sprite: SpriteBundle,
+    sprite: Sprite,
+    transform: Transform,
 }
 
 #[derive(Component)]
@@ -102,22 +103,13 @@ fn fire_weapon(
         }
 
         let sprite = if player.is_some() {
-            let texture = assets.player_projectile_image.clone_weak();
-            SpriteBundle {
-                texture,
-                transform: *transform,
-                ..default()
-            }
+            let image = assets.player_projectile_image.clone_weak();
+            Sprite { image, ..default() }
         } else {
-            let texture = assets.enemy_projectile_image.clone_weak();
-            let sprite = Sprite {
+            let image = assets.enemy_projectile_image.clone_weak();
+            Sprite {
                 flip_y: true,
-                ..default()
-            };
-            SpriteBundle {
-                sprite,
-                texture,
-                transform: *transform,
+                image,
                 ..default()
             }
         };
@@ -126,10 +118,14 @@ fn fire_weapon(
             velocity_vector: weapon.aim_vector,
             player: player.is_some(),
         };
-        let bundle = ProjectileBundle { projectile, sprite };
+        let bundle = ProjectileBundle {
+            projectile,
+            sprite,
+            transform: *transform,
+        };
 
         commands.spawn(bundle);
-        commands.spawn(assets.weapon_audio());
+        assets.weapon_audio(&mut commands);
     }
 }
 
@@ -148,7 +144,7 @@ fn move_projectiles(
 ) {
     for (projectile, mut transform, entity) in &mut query {
         // Compute distance vector
-        let move_vec = projectile.velocity_vector * time.delta_seconds();
+        let move_vec = projectile.velocity_vector * time.delta_secs();
         // extend to a Vec3
         let move_vec = move_vec.extend(0.0);
         let loc = &mut transform.translation;

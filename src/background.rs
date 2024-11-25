@@ -19,23 +19,16 @@ struct Background;
 
 /// Spawn a sprite with the background image
 fn init_background(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let texture = asset_server.load("stars1.png");
+    let image = asset_server.load("stars1.png");
     let transform = Transform::from_translation(vec3(0.0, BG_REPEAT_HEIGHT / 2.0, -100.0));
 
-    commands.spawn((
-        SpriteBundle {
-            texture,
-            transform,
-            ..Default::default()
-        },
-        Background,
-    ));
+    commands.spawn((Sprite::from_image(image), transform, Background));
 }
 
 /// Slowly move the background image
 fn move_background(time: Res<Time>, mut query: Query<&mut Transform, With<Background>>) {
     let mut transform = query.single_mut();
-    let mut new_y = transform.translation.y - MOVEMENT_RATE * time.delta_seconds();
+    let mut new_y = transform.translation.y - MOVEMENT_RATE * time.delta_secs();
 
     // The background image is tiled 2x so the top half and bottom half are identical.
     // The background will scroll from +BG_REPEAT_HEIGHT/2 TO -BG_REPEAT_HEIGHT/2

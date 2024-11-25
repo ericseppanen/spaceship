@@ -20,14 +20,9 @@ impl PlayerAssets {
         commands.insert_resource(PlayerAssets { player_ship_image });
     }
 
-    /// Create a SpriteBundle for the player ship at the spawn position.
-    fn player_ship(&self) -> SpriteBundle {
-        let transform = Transform::from_translation(PLAYER_SPAWN_POSITION.extend(0.0));
-        SpriteBundle {
-            texture: self.player_ship_image.clone_weak(),
-            transform,
-            ..default()
-        }
+    /// Create a Sprite for the player ship.
+    fn player_ship(&self) -> Sprite {
+        Sprite::from_image(self.player_ship_image.clone_weak())
     }
 }
 
@@ -47,7 +42,8 @@ impl Default for Player {
 #[derive(Bundle)]
 pub struct PlayerBundle {
     player: Player,
-    sprite: SpriteBundle,
+    sprite: Sprite,
+    transform: Transform,
     weapon: Weapon,
 }
 
@@ -61,6 +57,7 @@ impl Default for PlayerBundle {
         Self {
             player: Default::default(),
             sprite: Default::default(),
+            transform: Default::default(),
             weapon,
         }
     }
@@ -94,9 +91,7 @@ fn tune_analog(input: f32) -> f32 {
 pub fn player_movement(
     mut players: Query<(&mut Transform, &Player, Entity)>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    gamepads: Res<Gamepads>,
-    button_inputs: Res<ButtonInput<GamepadButton>>,
-    axes: Res<Axis<GamepadAxis>>,
+    gamepads: Query<&Gamepad>,
     time: Res<Time<Virtual>>,
     mut event_sender: EventWriter<WeaponFireEvent>,
 ) {
@@ -110,21 +105,17 @@ pub fn player_movement(
         return;
     };
 
-    let move_delta = player.speed * time.delta_seconds();
+    let move_delta = player.speed * time.delta_secs();
 
     let mut analog_x = None;
     let mut analog_y = None;
     let mut fire_button = false;
     // FIXME: gracefully handle >1 gamepads
     if let Some(gamepad) = gamepads.iter().next() {
-        analog_x = axes
-            .get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX))
-            .map(tune_analog);
-        analog_y = axes
-            .get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickY))
-            .map(tune_analog);
-        fire_button =
-            button_inputs.just_pressed(GamepadButton::new(gamepad, GamepadButtonType::South));
+        let analog = gamepad.left_stick().map(tune_analog);
+        analog_x = Some(analog.x);
+        analog_y = Some(analog.y);
+        fire_button = gamepad.digital().just_pressed(GamepadButton::South);
     }
 
     if keyboard.pressed(KeyCode::ArrowUp) {
@@ -178,8 +169,10 @@ fn spawn_player(
     info!("spawn player");
 
     let sprite = assets.player_ship();
+    let transform = Transform::from_translation(PLAYER_SPAWN_POSITION.extend(0.0));
     let player = PlayerBundle {
         sprite,
+        transform,
         ..default()
     };
 

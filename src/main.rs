@@ -29,7 +29,6 @@ enum GameState {
 
 fn main() {
     App::new()
-        .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::srgb_u8(1, 1, 1)))
         .add_plugins(
             DefaultPlugins
@@ -70,15 +69,22 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    let mut camera = Camera2dBundle::default();
-    camera.camera.viewport = Some(Viewport {
-        physical_size: (400, 800).into(),
+    let camera = Camera {
+        viewport: Some(Viewport {
+            physical_size: (400, 800).into(),
+            ..default()
+        }),
         ..default()
+    };
+
+    let projection = Projection::from(OrthographicProjection {
+        scaling_mode: ScalingMode::FixedVertical {
+            viewport_height: 800.0,
+        },
+        ..OrthographicProjection::default_2d()
     });
 
-    camera.projection.scaling_mode = ScalingMode::FixedVertical(800.0);
-
-    commands.spawn(camera);
+    commands.spawn((Camera2d, camera, projection, Msaa::Off));
 }
 
 // If the window gets resized, we need to update the camera viewport.
