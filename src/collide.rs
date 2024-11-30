@@ -25,7 +25,7 @@ impl Plugin for CollisionPlugin {
             .add_systems(Startup, CollisionAssets::load)
             .add_systems(
                 Update,
-                (check_player_collisions, check_enemy_collisions, animations)
+                (check_player_collisions, check_enemy_collisions)
                     .run_if(in_state(GameState::Playing)),
             )
             // Make sure the player death runs in the same frame as the
@@ -43,7 +43,8 @@ impl Plugin for CollisionPlugin {
                     .after(check_player_collisions)
                     .after(check_enemy_collisions)
                     .run_if(in_state(GameState::Playing)),
-            );
+            )
+            .add_systems(Update, death_animations);
     }
 }
 
@@ -266,7 +267,7 @@ impl DeathAnimation {
 /// Play the death animations.
 ///
 /// The entity will be despawned when the animation completes.
-fn animations(
+fn death_animations(
     mut commands: Commands,
     mut animation_query: Query<(&mut Sprite, &mut DeathAnimation, Entity)>,
     assets: Res<CollisionAssets>,
