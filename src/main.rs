@@ -19,6 +19,12 @@ mod player;
 mod ui;
 mod weapon;
 
+const PRESENT_MODE: PresentMode = if cfg!(target_family = "wasm") {
+    PresentMode::Fifo
+} else {
+    PresentMode::Mailbox
+};
+
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, Copy, States)]
 enum GameState {
     #[default]
@@ -45,7 +51,7 @@ fn main() {
                         canvas: Some("#spaceship-canvas".into()),
                         title: "Spaceship!".into(),
                         resolution: WindowResolution::new(400.0, 800.0),
-                        present_mode: PresentMode::AutoNoVsync,
+                        present_mode: PRESENT_MODE,
                         resizable: true,
                         ..default()
                     }),
