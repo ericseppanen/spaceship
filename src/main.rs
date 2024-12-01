@@ -53,6 +53,10 @@ fn main() {
                 })
                 .build(),
         )
+        // .add_plugins((
+        //     bevy::diagnostic::FrameTimeDiagnosticsPlugin,
+        //     bevy::diagnostic::LogDiagnosticsPlugin::default(),
+        // ))
         .init_state::<GameState>()
         .add_systems(Startup, setup)
         .add_systems(Update, window_resize)
